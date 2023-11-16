@@ -2,15 +2,13 @@ package com.pikuco.quizservice.controller;
 
 import com.pikuco.quizservice.service.QuizService;
 import com.pikuco.sharedComps.quizService.dto.QuizDto;
+import com.pikuco.sharedComps.quizService.dto.QuizResultsDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,5 +26,23 @@ public class QuizController {
     public ResponseEntity<List<QuizDto>> showQuizzes() {
         List<QuizDto> tournaments = quizService.getQuizzes();
         return ResponseEntity.ok(tournaments);
+    }
+
+    @PostMapping
+    public ResponseEntity<Integer> addQuiz(@RequestBody QuizDto quizDto) {
+        int id = quizService.addQuiz(quizDto);
+        return ResponseEntity.ok(id);
+    }
+
+    @GetMapping("/{quizId}")
+    public ResponseEntity<QuizDto> showQuizById(@PathVariable int quizId) {
+        QuizDto quizDto = quizService.getQuizById(quizId);
+        return ResponseEntity.ok(quizDto);
+    }
+
+    @GetMapping("{quizId}/results")
+    public ResponseEntity<QuizResultsDto> showQuizResultsByQuizId(@PathVariable int quizId) {
+        QuizResultsDto quizResults = quizService.getQuizResultsByQuizId(quizId);
+        return ResponseEntity.ok(quizResults);
     }
 }

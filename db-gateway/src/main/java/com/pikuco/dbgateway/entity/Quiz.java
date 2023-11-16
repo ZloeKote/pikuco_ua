@@ -1,8 +1,10 @@
 package com.pikuco.dbgateway.entity;
 
+import com.mongodb.DBRef;
 import com.pikuco.sharedComps.quizService.dto.Creator;
 import com.pikuco.sharedComps.quizService.entity.Question;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
@@ -15,6 +17,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Document(collection = "quiz")
 public class Quiz {
     @Id
@@ -32,6 +35,10 @@ public class Quiz {
     private LocalDateTime updatedAt;
     @Field(name = "creator")
     private Creator creator;
-    @Field(name = "participants")
+    @Field(name = "questions")
     private List<Question> questions;
+    @Field(name = "quizId")
+    private int quizId;
+    @Field(name = "isRoughDraft")
+    private boolean isRoughDraft;
 }
