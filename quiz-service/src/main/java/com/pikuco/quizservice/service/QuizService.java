@@ -1,6 +1,5 @@
 package com.pikuco.quizservice.service;
 
-import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import com.pikuco.sharedComps.quizService.dto.QuizDto;
 import lombok.AllArgsConstructor;

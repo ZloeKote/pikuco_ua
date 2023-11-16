@@ -1,6 +1,5 @@
 package com.pikuco.quizservice.service;
 
-import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.sharedComps.quizService.dto.QuizDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
