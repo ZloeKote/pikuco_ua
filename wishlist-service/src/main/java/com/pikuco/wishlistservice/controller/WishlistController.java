@@ -1,6 +1,7 @@
 package com.pikuco.wishlistservice.controller;
 
-import com.pikuco.sharedComps.wishlistService.dto.WishlistDto;
+import com.pikuco.wishlistservice.dto.WishlistDto;
+import com.pikuco.wishlistservice.mapper.WishlistMapper;
 import com.pikuco.wishlistservice.service.WishlistService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,8 @@ public class WishlistController {
 
     @GetMapping
     public ResponseEntity<List<WishlistDto>> showWishlists() {
-        List<WishlistDto> wishlists = wishlistService.getWishlists();
+        List<WishlistDto> wishlists = wishlistService.getAllWishlists()
+                .stream().map(WishlistMapper::mapToWishlistDto).toList();
         return ResponseEntity.ok(wishlists);
     }
 }

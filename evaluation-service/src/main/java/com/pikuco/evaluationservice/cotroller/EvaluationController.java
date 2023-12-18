@@ -1,7 +1,8 @@
 package com.pikuco.evaluationservice.cotroller;
 
+import com.pikuco.evaluationservice.dto.EvaluationDto;
+import com.pikuco.evaluationservice.mapper.EvaluationMapper;
 import com.pikuco.evaluationservice.service.EvaluationService;
-import com.pikuco.sharedComps.evaluationService.dto.EvaluationDto;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +19,8 @@ public class EvaluationController {
 
     @GetMapping
     public ResponseEntity<List<EvaluationDto>> showEvaluations() {
-        List<EvaluationDto> evaluations = evaluationService.getEvaluations();
+        List<EvaluationDto> evaluations = evaluationService.getEvaluations()
+                .stream().map(EvaluationMapper::mapToEvaluationDto).toList();
         return ResponseEntity.ok(evaluations);
     }
 }

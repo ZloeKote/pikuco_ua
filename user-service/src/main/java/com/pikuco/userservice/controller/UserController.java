@@ -1,6 +1,7 @@
 package com.pikuco.userservice.controller;
 
-import com.pikuco.sharedComps.userService.dto.UserDto;
+import com.pikuco.userservice.dto.UserDto;
+import com.pikuco.userservice.mapper.UserMapper;
 import com.pikuco.userservice.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,8 @@ public class UserController {
 
     @GetMapping()
     public ResponseEntity<List<UserDto>> showUsers() {
-        List<UserDto> users = userService.getUsers();
+        List<UserDto> users = userService.getAllUsers()
+                .stream().map(UserMapper::mapToUserDto).toList();
         return ResponseEntity.ok(users);
     }
 }
