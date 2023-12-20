@@ -20,7 +20,7 @@ public class Wishlist {
     @Field(name = "type")
     private String type;
     @Field(name = "user_id")
-    private Long userId;
+    private long userId;
     @Field(name = "wishlisted_id")
     private String wishlistedId;
     @Field(name = "wishlistedAt")

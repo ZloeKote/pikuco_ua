@@ -1,5 +1,6 @@
 package com.pikuco.wishlistservice.controller;
 
+import com.pikuco.wishlistservice.dto.CheckIsInWishlistResponse;
 import com.pikuco.wishlistservice.dto.WishlistDto;
 import com.pikuco.wishlistservice.mapper.WishlistMapper;
 import com.pikuco.wishlistservice.service.WishlistService;
@@ -34,5 +35,12 @@ public class WishlistController {
                                                     @PathVariable int pseudoId) {
         wishlistService.deleteQuizFromWishlist(authHeader, pseudoId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/quiz/{pseudoId}")
+    public ResponseEntity<CheckIsInWishlistResponse> checkIfQuizIsInWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                                                             @PathVariable int pseudoId) {
+        boolean isInWishlist = wishlistService.checkIfQuizIsInWishlist(authHeader, pseudoId);
+        return ResponseEntity.ok(new CheckIsInWishlistResponse(isInWishlist));
     }
 }
