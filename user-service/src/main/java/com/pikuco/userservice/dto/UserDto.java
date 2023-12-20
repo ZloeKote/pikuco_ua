@@ -1,10 +1,10 @@
 package com.pikuco.userservice.dto;
 
-import java.sql.Date;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 public record UserDto(
-    int id,
+    Long id,
     String nickname,
     String email,
     String role,
