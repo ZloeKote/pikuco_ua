@@ -5,9 +5,7 @@ import com.pikuco.wishlistservice.mapper.WishlistMapper;
 import com.pikuco.wishlistservice.service.WishlistService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,5 +20,19 @@ public class WishlistController {
         List<WishlistDto> wishlists = wishlistService.getAllWishlists()
                 .stream().map(WishlistMapper::mapToWishlistDto).toList();
         return ResponseEntity.ok(wishlists);
+    }
+
+    @PostMapping("/quiz/{pseudoId}")
+    public ResponseEntity<?> addQuizToWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                               @PathVariable int pseudoId) {
+        wishlistService.addQuizToWishlist(authHeader, pseudoId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/quiz/{pseudoId}")
+    public ResponseEntity<?> deleteQuizFromWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                                    @PathVariable int pseudoId) {
+        wishlistService.deleteQuizFromWishlist(authHeader, pseudoId);
+        return ResponseEntity.ok().build();
     }
 }

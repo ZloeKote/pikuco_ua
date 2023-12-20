@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public record WishlistDto(
     String id,
     String type,
-    int userId,
+    Long userId,
     String wishlistedId,
     LocalDateTime wishlistedAt
 ) {}
