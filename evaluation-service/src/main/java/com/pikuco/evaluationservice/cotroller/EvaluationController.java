@@ -1,15 +1,10 @@
 package com.pikuco.evaluationservice.cotroller;
 
 import com.pikuco.evaluationservice.dto.EvaluationDto;
-import com.pikuco.evaluationservice.mapper.EvaluationMapper;
 import com.pikuco.evaluationservice.service.EvaluationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("api/v1/evaluations")
@@ -17,10 +12,25 @@ import java.util.List;
 public class EvaluationController {
     EvaluationService evaluationService;
 
-    @GetMapping
-    public ResponseEntity<List<EvaluationDto>> showEvaluations() {
-        List<EvaluationDto> evaluations = evaluationService.getEvaluations()
-                .stream().map(EvaluationMapper::mapToEvaluationDto).toList();
-        return ResponseEntity.ok(evaluations);
+    @GetMapping("/quizzes/{pseudoId}")
+    public ResponseEntity<EvaluationDto> showEvaluationByPseudoQuizId(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                                                      @PathVariable int pseudoId) {
+        EvaluationDto evaluation = evaluationService.getEvaluationByQuizId(authHeader, pseudoId);
+        return ResponseEntity.ok(evaluation);
+    }
+
+    @PostMapping("/quizzes/{pseudoId}")
+    public ResponseEntity<?> addEvaluation(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                           @PathVariable int pseudoId,
+                                           @RequestBody AddEvaluationRequest isLiked) {
+        evaluationService.addEvaluation(authHeader, pseudoId, isLiked.getIsLiked());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/quizzes/{pseudoId}")
+    public ResponseEntity<?> deleteEvaluation(@RequestHeader(required = false, value = "Authorization") String authHeader,
+                                              @PathVariable int pseudoId) {
+        evaluationService.deleteEvaluation(authHeader, pseudoId);
+        return ResponseEntity.ok().build();
     }
 }

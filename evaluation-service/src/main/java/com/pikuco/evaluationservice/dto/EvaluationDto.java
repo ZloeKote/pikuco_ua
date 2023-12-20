@@ -1,12 +1,19 @@
 package com.pikuco.evaluationservice.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
+
 import java.time.LocalDateTime;
 
-public record EvaluationDto (
-        String id,
-        String type,
-        int userId,
-        String evaluationObjectId,
-        boolean isLiked,
-        LocalDateTime evaluatedAt
-){}
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class EvaluationDto {
+    private int evaluation;
+    private boolean isLiked;
+    private boolean isDisliked;
+}

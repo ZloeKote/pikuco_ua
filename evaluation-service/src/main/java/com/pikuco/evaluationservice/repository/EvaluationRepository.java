@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EvaluationRepository extends MongoRepository<Evaluation, ObjectId> {
+
 }
