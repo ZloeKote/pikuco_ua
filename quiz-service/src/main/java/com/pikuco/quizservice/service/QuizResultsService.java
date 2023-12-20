@@ -1,16 +1,14 @@
 package com.pikuco.quizservice.service;
 
 import com.mongodb.DBRef;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Updates;
-import com.mongodb.client.result.UpdateResult;
+import com.pikuco.quizservice.api.UserAPIClient;
+import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.entity.*;
+import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.repository.QuizResultsRepository;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.RequiredArgsConstructor;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -18,17 +16,20 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.mongodb.core.query.UpdateDefinition;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Switch.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class QuizResultsService {
     private final MongoTemplate mongoTemplate;
     private final QuizResultsRepository quizResultsRepository;
+    private final UserAPIClient userAPIClient;
     @Getter
     private final QuizService quizService;
 
@@ -38,7 +39,7 @@ public class QuizResultsService {
         int rounds = (int) Math.pow(amountQuestions, 0.5) + 1; // + 1 because last round has 2nd and 1st place
 
         // find results by quiz id
-        MatchOperation matchOperation = Aggregation.match(new Criteria().andOperator(Criteria.where("quiz.$id").is(quiz.getId())));
+        MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
         // unwind results
         UnwindOperation unwindResults = Aggregation.unwind("results");
         // unwind questions
@@ -46,20 +47,21 @@ public class QuizResultsService {
 
         // calculate points for each place using fibonacci sequence
         int[] points = new int[rounds];
-        points[0] = 1;
-        points[1] = 2;
-        for (int i = 2; i < rounds; i++) {
+        points[0] = 0;
+        points[1] = 1;
+        points[2] = 2;
+        for (int i = 3; i < rounds; i++) {
             points[i] = points[i - 1] + points[i - 2];
         }
 
         // create cases for switch operator to calculate points for each question
-        List<ConditionalOperators.Switch.CaseOperator> cases = new ArrayList<>();
+        List<CaseOperator> cases = new ArrayList<>();
         for (int i = 1; i <= rounds; i++) {
             int roundAmountPlaces = (int) Math.round(amountQuestions / Math.pow(2, i));
             int roundAmountQuestions = (int) Math.round(amountQuestions / Math.pow(2, i - 1));
             int minPlace = roundAmountQuestions - roundAmountPlaces;
 
-            ConditionalOperators.Switch.CaseOperator caseOperator = ConditionalOperators.Switch.CaseOperator
+            CaseOperator caseOperator = CaseOperator
                     .when(BooleanOperators.And.and(ComparisonOperators.valueOf("$results.questions.place").lessThanEqualToValue(roundAmountQuestions),
                             ComparisonOperators.valueOf("$results.questions.place").greaterThanValue(minPlace))).then(points[i - 1]);
             cases.add(caseOperator);
@@ -99,13 +101,17 @@ public class QuizResultsService {
             questionResultList.add(questionResult);
         }
         quizResults.getResults().clear();
-        quizResults.getResults().add(new QuizResult(questionResultList, 0, LocalDateTime.now()));
+        quizResults.getResults().add(new QuizResult(questionResultList, 0L, LocalDateTime.now()));
         return quizResults;
     }
 
-    public QuizResults getIndividualQuizResults(int pseudoId, int userId, SortQuizResultsType sortType) {
-        Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
+    public QuizResults getIndividualQuizResults(String authHeader, int pseudoId, SortQuizResultsType sortType) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        Long userId = Objects.requireNonNull(responseEntity.getBody()).id();
 
+        Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         // find results by quiz id
         MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
         // unwind results
@@ -127,17 +133,19 @@ public class QuizResultsService {
         ProjectionOperation projectionOperation = Aggregation.project()
                 .and("results.participant_id").as("participant_id")
                 .and("results.questions").as("questions")
+                .and("results.passedAt").as("passedAt")
                 .andExclude("_id");
         // group by participant id
         GroupOperation groupOperation = Aggregation.group("participant_id")
                 .first("participant_id").as("participant_id")
+                .first("passedAt").as("passedAt")
                 .push("questions").as("questions");
 
         Aggregation aggregation = Aggregation.newAggregation(matchOperation, unwindResults,
                 matchOperationUser, unwindQuestions,
                 sortOperation, projectionOperation, groupOperation);
 
-        QuizResult resultsDoc = mongoTemplate.aggregate(aggregation, "quizResults", QuizResult.class).getMappedResults().get(0);
+        QuizResult resultsDoc = mongoTemplate.aggregate(aggregation, "quizResults", QuizResult.class).getUniqueMappedResult();
         QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
         quizResults.getResults().clear();
         quizResults.getResults().add(resultsDoc);
@@ -149,22 +157,26 @@ public class QuizResultsService {
         quizResultsRepository.deleteQuizResultsByQuiz_Id(quiz.getId());
     }
 
-    public void addNewQuizResult(QuizResult quizResult, int quizPseudoId) {
+    public void addNewQuizResult(String authHeader, QuizResult quizResult, int quizPseudoId) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        quizResult.setParticipant_id(Objects.requireNonNull(responseEntity.getBody()).id());
+
         Quiz quiz = quizService.getQuizByPseudoId(quizPseudoId);
         QuizResults quizResults = new QuizResults();
 
         try {
-            quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
-
+            quizResults = quizResultsRepository.findByQuiz_Id(quiz.getId()).orElseThrow();
             Query query = new Query(Criteria.where("_id").is(new ObjectId(quizResults.getId()))
                     .and("results").elemMatch(Criteria.where("participant_id").is(quizResult.getParticipant_id())));
             Update update = new Update();
             // if participant already has results, update his questions
             boolean isParticipateExists = quizResults.getResults()
-                    .stream().anyMatch((result) -> quizResult.getParticipant_id() == result.getParticipant_id());
+                    .stream().anyMatch((result) -> Objects.equals(quizResult.getParticipant_id(), result.getParticipant_id()));
             if (isParticipateExists) {
                 update.set("results.$.questions", quizResult.getQuestions())
-                        .set("results.$.passedAt", quizResult.getPassedAt());
+                        .set("results.$.passedAt", LocalDateTime.now());
                 mongoTemplate.updateFirst(query, update, "quizResults");
                 return;
             }
@@ -172,7 +184,7 @@ public class QuizResultsService {
             // add results to quiz results that exists
             Document resultsDoc = new Document("questions", quizResult.getQuestions())
                     .append("participant_id", quizResult.getParticipant_id())
-                    .append("passedAt", quizResult.getPassedAt());
+                    .append("passedAt", LocalDateTime.now());
             query = new Query(Criteria.where("_id").is(new ObjectId(quizResults.getId())));
             update = new Update();
             update.push("results", resultsDoc);
@@ -185,7 +197,7 @@ public class QuizResultsService {
         }
     }
 
-    public List<ObjectId> getQuizzesIdByParticipantId(int participantId, SortQuizResultsType sortType, int pageNo, int pageSize) {
+    public List<ObjectId> getQuizzesIdByParticipantId(Long participantId, SortQuizResultsType sortType, int pageNo, int pageSize) {
         MatchOperation matchOperation = Aggregation.match(Criteria.where("results").elemMatch(Criteria.where("participant_id").is(participantId)));
         UnwindOperation unwindOperation = Aggregation.unwind("results");
         MatchOperation matchOperation1 = Aggregation.match(Criteria.where("results.participant_id").is(participantId));

@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class Creator {
-    int creator_id;
+    Long creator_id;
     String nickname;
     String avatar;
 }

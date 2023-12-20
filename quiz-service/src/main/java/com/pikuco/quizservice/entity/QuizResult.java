@@ -11,6 +11,6 @@ import java.util.List;
 @NoArgsConstructor
 public class QuizResult {
     List<QuestionResult> questions;
-    int participant_id;
+    Long participant_id;
     LocalDateTime passedAt;
 }

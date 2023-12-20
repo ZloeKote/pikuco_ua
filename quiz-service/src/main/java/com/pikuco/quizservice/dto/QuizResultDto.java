@@ -5,7 +5,7 @@ import java.util.List;
 
 public record QuizResultDto(
         List<QuestionResultDto> questions,
-        int participant_id,
+        Long participant_id,
         LocalDateTime passedAt
 ) {
 }

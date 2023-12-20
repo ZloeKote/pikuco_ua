@@ -1,17 +1,23 @@
 package com.pikuco.quizservice.service;
 
 import com.pikuco.quizservice.QuizServiceApplication;
+import com.pikuco.quizservice.api.EvaluationAPIClient;
+import com.pikuco.quizservice.api.UserAPIClient;
+import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.entity.*;
+import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
 import com.pikuco.quizservice.repository.QuizRepository;
+import com.thoughtworks.xstream.security.NoPermission;
+import feign.FeignException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,6 +25,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -28,11 +36,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class QuizService {
-    private QuizRepository quizRepository;
-    private MongoTemplate mongoTemplate;
-    private ApplicationContext context;
+    private final QuizRepository quizRepository;
+    private final MongoTemplate mongoTemplate;
+    private final ApplicationContext context;
+    private final UserAPIClient userAPIClient;
+    private final EvaluationAPIClient evaluationAPIClient;
 
     public List<Quiz> getQuizzes(int pageNo, int pageSize) {
         Pageable pageable = PageRequest.of(pageNo - 1, pageSize);
@@ -72,7 +82,7 @@ public class QuizService {
             case HIGHEST_RATED -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.ASC, ""));
             case NEWEST -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt"));
         }
-        MatchOperation matchOperation = null;
+        MatchOperation matchOperation;
         if (!criteriaList.isEmpty()) {
             matchOperation = Aggregation.match(new Criteria().andOperator(criteriaList));
             aggregation = Aggregation.newAggregation(matchOperation, sortOperation, skipOperation, limitOperation);
@@ -84,39 +94,61 @@ public class QuizService {
         return results.getMappedResults();
     }
 
-    public List<Quiz> getQuizzesByParticipantId(int participantId, SortQuizResultsType sort, int PageNo, int pageSize) {
-        QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
-        List<ObjectId> quizIds = quizResultsService.getQuizzesIdByParticipantId(participantId, sort, PageNo, pageSize);
-        List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizIds);
-        // Створіть Map для ефективного відображення id на Quiz
-        Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
+    public List<Quiz> getQuizzesByParticipantId(String authHeader, SortQuizResultsType sort, int PageNo, int pageSize) {
+        try {
+            ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+            Long participantId = Objects.requireNonNull(responseEntity.getBody()).id();
+            QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
+            List<ObjectId> quizIds = quizResultsService.getQuizzesIdByParticipantId(participantId, sort, PageNo, pageSize);
+            List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizIds);
+            Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
 
-        // Створіть список, в якому порядок відображається згідно із вхідним списком id
-        return quizIds.stream()
-                .map(quizMap::get)
-                .toList();
+            return quizIds.stream()
+                    .map(quizMap::get)
+                    .toList();
+        } catch (FeignException e) {
+            throw new NonAuthorizedException("Ви не авторизовані");
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
-    public int addQuiz(Quiz quiz) {
+    public int addQuiz(String authHeader, Quiz quiz) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        UserDto user = Objects.requireNonNull(responseEntity.getBody());
+
         if (quiz.getPseudoId() != 0)
             throw new ObjectNotValidException(new HashSet<String>(List.of("Ви не можете додати вікторину, яка вже була створена!")));
 
         int greatestId = quizRepository.findFirstByOrderByPseudoIdDesc().orElseThrow().getPseudoId();
         quiz.setPseudoId(++greatestId);
-        quiz.setCreatedAt(LocalDateTime.now());
         if (!quiz.isRoughDraft())
             quiz.setUpdatedAt(quiz.getCreatedAt());
+        quiz.setCreator(new Creator(user.id(), user.nickname(), user.avatar()));
         validateQuiz(quiz); // validate quiz
+        quiz.setCreatedAt(LocalDateTime.now());
         greatestId = quizRepository.insert(quiz).getPseudoId();
         if (greatestId == 0) throw new NullPointerException("Quiz was not added");
         return greatestId;
     }
 
-    public void changeQuiz(Quiz quiz) {
+    public void changeQuiz(String authHeader, Quiz quiz) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        Long creatorId = Objects.requireNonNull(responseEntity.getBody()).id();
+
         Quiz quizToChange = quizRepository.findQuizByPseudoId(quiz.getPseudoId())
                 .orElseThrow(() -> new ObjectNotFoundException(new HashSet<String>(List.of("Турнір не знайдено"))));
-        quiz.setId(quizToChange.getId());
 
+        if (!Objects.equals(quizToChange.getCreator().getCreator_id(), creatorId))
+            throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права змінювати її");
+
+        quiz.setId(quizToChange.getId());
+        quiz.setCreator(quizToChange.getCreator());
+        quiz.setCreatedAt(quizToChange.getCreatedAt());
         if (!quizToChange.isRoughDraft() && !quiz.isRoughDraft()) {
             quiz.setUpdatedAt(LocalDateTime.now());
         } else if (quizToChange.isRoughDraft() && !quiz.isRoughDraft()) {
@@ -132,13 +164,21 @@ public class QuizService {
         mongoTemplate.findAndReplace(query, quiz, "quiz");
     }
 
-    public void deleteQuiz(int pseudoId, int userId) {
-        Quiz quizToDelete = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow();
-        if (quizToDelete.getCreator().getCreator_id() == userId) {
+    public void deleteQuiz(String authHeader, int pseudoId) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        Long creatorId = Objects.requireNonNull(responseEntity.getBody()).id();
+
+        Quiz quizToDelete = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
+                new ObjectNotFoundException(new HashSet<String>(List.of("Турнір не знайдено"))));
+        if (Objects.equals(quizToDelete.getCreator().getCreator_id(), creatorId)) {
             quizRepository.deleteById(quizToDelete.getId());
+            QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
+            quizResultsService.deleteQuizResultsByQuizId(quizToDelete.getPseudoId());
             return;
         }
-        throw new ObjectNotValidException(new HashSet<String>(List.of("Ви не маєте права видалити цей турнір")));
+        throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
     }
 
     public Quiz getQuizByPseudoId(int quizId) {
@@ -188,7 +228,7 @@ public class QuizService {
         for (Question q : quiz.getQuestions()) {
             if (q.getTitle() != null && !q.getTitle().isBlank()) {
                 if (q.getTitle().length() < 3 || q.getTitle().length() > 30)
-                    throw new ObjectNotValidException(new HashSet<String>(List.of("Назва питання повинно містити від 3 до 80 символів")));
+                    throw new ObjectNotValidException(new HashSet<String>(List.of("Назва питання повинно містити від 3 до 30 символів")));
             } else
                 throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть назву питання")));
 

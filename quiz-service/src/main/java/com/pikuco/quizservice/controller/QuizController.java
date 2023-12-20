@@ -1,6 +1,7 @@
 package com.pikuco.quizservice.controller;
 
 import com.pikuco.quizservice.dto.QuizDto;
+import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.quizservice.entity.SortQuizResultsType;
 import com.pikuco.quizservice.entity.SortType;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +37,7 @@ public class QuizController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<QuizDto>> filterSortQuizzes(@RequestParam(name = "title", required = false) String title,
+    public ResponseEntity<List<QuizDto>> showFilterSortQuizzes(@RequestParam(name = "title", required = false) String title,
                                                            @RequestParam(name = "type", required = false) String type,
                                                            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
                                                            @RequestParam(defaultValue = "0", name = "creatorId", required = false) int creatorId,
@@ -47,42 +49,48 @@ public class QuizController {
         return ResponseEntity.ok(quizzes);
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<QuizDto>> getQuizzesByParticipantId(@PathVariable int userId,
+    @GetMapping("/user")
+    public ResponseEntity<List<QuizDto>> showQuizzesByParticipantId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
                                                                    @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
                                                                    @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.NEWEST;
-        List<QuizDto> quizzes = quizService.getQuizzesByParticipantId(userId, sortType, pageNo, Const.PAGE_SIZE)
+
+        List<QuizDto> quizzes = quizService.getQuizzesByParticipantId(authHeader, sortType, pageNo, Const.PAGE_SIZE)
                 .stream().map(QuizMapper::mapToQuizDto).toList();
         return ResponseEntity.ok(quizzes);
     }
 
     @PostMapping
-    public ResponseEntity<Integer> addQuiz(@RequestBody QuizDto quizDto) {
-        int id = quizService.addQuiz(QuizMapper.mapToQuiz(quizDto));
+    public ResponseEntity<Integer> addQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                           @RequestBody QuizDto quizDto) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+
+        int id = quizService.addQuiz(authHeader, QuizMapper.mapToQuiz(quizDto));
         return ResponseEntity.ok(id);
     }
 
     @PutMapping("/{pseudoId}")
-    public ResponseEntity<?> updateQuiz(@PathVariable int pseudoId,
+    public ResponseEntity<?> updateQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                        @PathVariable int pseudoId,
                                         @RequestBody QuizDto quizDto) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
         if (pseudoId != quizDto.pseudoId())
             return ResponseEntity.badRequest().body("Ідентифікатори вікторини не співпадають. Спробуйте знову!");
-        quizService.changeQuiz(QuizMapper.mapToQuiz(quizDto));
+        quizService.changeQuiz(authHeader, QuizMapper.mapToQuiz(quizDto));
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{pseudoId}")
-    public ResponseEntity<?> deleteQuiz(@PathVariable int pseudoId,
-                                        @RequestParam("userId") String userId) {
-        if (userId == null || userId.isBlank())
-            return ResponseEntity.badRequest().body("Ви не авторизовані. Увійдіть в систему та спробуйте ще раз");
-        try {
-
-            quizService.deleteQuiz(pseudoId, Integer.parseInt(userId));
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body("Сталася помилка при видаленні вікторини. Спробуйте ще раз");
-        }
+    public ResponseEntity<?> deleteQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                        @PathVariable int pseudoId) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
+        quizService.deleteQuiz(authHeader, pseudoId);
         return ResponseEntity.ok().build();
     }
 
@@ -92,12 +100,9 @@ public class QuizController {
         return ResponseEntity.ok(quizDto);
     }
 
-//    @GetMapping("/{pseudoId}/user")
-//    public ResponseEntity<List<QuizDto>> showQuizzesByCreatorId(@RequestParam("userId") String userId) {
-//        if (userId == null || userId.isBlank())
-//            throw new ObjectNotFoundException(Collections.singleton("Неправильно вказано id творця"));
-//        List<QuizDto> quizzes = quizService.getQuizzesByCreatorId(pseudoId, Integer.parseInt(userId))
-//                .stream().map(QuizMapper::mapToQuizDto).toList();
-//        return ResponseEntity.ok(quizzes);
-//    }
+    @GetMapping("/{pseudoId}/id")
+    public ResponseEntity<String> showQuizIdByPseudoId(@PathVariable int pseudoId) {
+        Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
+        return ResponseEntity.ok(String.valueOf(quiz.getId()));
+    }
 }

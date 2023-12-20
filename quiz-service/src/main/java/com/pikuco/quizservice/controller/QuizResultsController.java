@@ -7,6 +7,7 @@ import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.mapper.QuizResultsMapper;
 import com.pikuco.quizservice.service.QuizResultsService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,21 +29,15 @@ public class QuizResultsController {
     }
 
     @GetMapping("/{pseudoId}/user")
-    public ResponseEntity<QuizResultsDto> showIndividualQuizResults(@PathVariable int pseudoId,
-                                                                    @RequestParam("userId") String userId,
+    public ResponseEntity<QuizResultsDto> showIndividualQuizResults(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                                                    @PathVariable int pseudoId,
                                                                     @RequestParam(defaultValue = "PLACE_ASC", name = "sort", required = false) String sort) {
-        if (userId == null || userId.isEmpty()) {
-            throw new ObjectNotFoundException(Collections.singleton("Неможливо отримати результати, оскільки не вказано користувача"));
-        }
-        SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.PLACE_ASC;
-        QuizResultsDto quizResults = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getIndividualQuizResults(pseudoId, Integer.parseInt(userId), sortType));
-        return ResponseEntity.ok(quizResults);
-    }
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
-    @DeleteMapping("/{pseudoId}")
-    public ResponseEntity<?> deleteQuizResults(@PathVariable int pseudoId) {
-        quizResultsService.deleteQuizResultsByQuizId(pseudoId);
-        return ResponseEntity.ok().build();
+        SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.PLACE_ASC;
+        QuizResultsDto quizResults = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getIndividualQuizResults(authHeader, pseudoId, sortType));
+        return ResponseEntity.ok(quizResults);
     }
 
     // Realizes 3 scenarios:
@@ -50,9 +45,13 @@ public class QuizResultsController {
     // 2 - add to existing quiz results new results
     // 3 - update existing quiz results if participant already has results for this quiz
     @PostMapping("/{pseudoId}")
-    public ResponseEntity<?> addQuizResult(@PathVariable int pseudoId,
+    public ResponseEntity<?> addQuizResult(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                           @PathVariable int pseudoId,
                                            @RequestBody QuizResultDto quizResultDto) {
-        quizResultsService.addNewQuizResult(QuizResultsMapper.mapToQuizResult(quizResultDto), pseudoId);
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+
+        quizResultsService.addNewQuizResult(authHeader, QuizResultsMapper.mapToQuizResult(quizResultDto), pseudoId);
         return ResponseEntity.ok().build();
     }
 }

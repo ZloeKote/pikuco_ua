@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface QuizResultsRepository extends MongoRepository<QuizResults, ObjectId> {
     @Query(value = "{ 'quiz.$id' : ?0 }")
     Optional<QuizResults> findFirstByQuiz_Id(ObjectId id);
+    @Query(value = "{ 'quiz.$id' : ?0 }")
+    Optional<QuizResults> findByQuiz_Id(ObjectId id);
     @Query(value = "{ 'quiz.$id' : ?0 }", delete = true)
     void deleteQuizResultsByQuiz_Id(ObjectId id);
 }
