@@ -13,7 +13,6 @@ import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("api/v1/user")
-@CrossOrigin(origins = "http://localhost:3000")
 @AllArgsConstructor
 public class UserController {
     private UserService userService;

@@ -7,13 +7,15 @@ import com.pikuco.userservice.exception.ObjectNotValidException;
 import com.pikuco.userservice.service.AuthenticationService;
 import com.pikuco.userservice.service.UserService;
 import com.pikuco.userservice.validator.ObjectsValidator;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.HttpHeaders;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
@@ -29,7 +31,9 @@ public class AuthenticationController {
     private final ObjectsValidator<AuthenticationRequest> authenticationValidator;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request,
+                                                           HttpServletResponse response) {
+        System.out.println(request);
         registerValidator.validate(request);
         if (request.getBirthdate() != null &&
                 (request.getBirthdate().after(new Date(114, Calendar.JANUARY, 1)) ||
@@ -40,14 +44,21 @@ public class AuthenticationController {
             throw new ObjectNotValidException(new HashSet<String>(List.of("Користувач з таким нікнеймом вже існує")));
         else if (userService.getUserByEmail(request.getEmail()).isPresent())
             throw new ObjectNotValidException(new HashSet<String>(List.of("Користувач з такою поштою вже існує")));
-        return ResponseEntity.ok(authenticationService.register(request));
+
+        return ResponseEntity.ok(authenticationService.register(request, response));
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody AuthenticationRequest request) {
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request,
+                                                               HttpServletResponse httpResponse) {
         authenticationValidator.validate(request);
         if (userService.getUserByEmail(request.getEmail()).isEmpty())
             throw new ObjectNotValidException(new HashSet<String>(List.of("Користувача з такою поштою не існує")));
-        return ResponseEntity.ok(authenticationService.authenticate(request));
+        return ResponseEntity.ok(authenticationService.authenticate(request, httpResponse));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<AuthenticationResponse> refreshToken(HttpServletRequest request) {
+        return ResponseEntity.ok(authenticationService.refreshToken(request));
     }
 }
