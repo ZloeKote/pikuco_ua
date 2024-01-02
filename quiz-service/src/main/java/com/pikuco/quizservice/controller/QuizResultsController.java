@@ -15,7 +15,7 @@ import java.util.Collections;
 
 @RestController
 @RequestMapping("api/v1/quiz-results")
-@CrossOrigin(origins = "http://localhost:3000")
+//@CrossOrigin
 @AllArgsConstructor
 public class QuizResultsController {
     private QuizResultsService quizResultsService;

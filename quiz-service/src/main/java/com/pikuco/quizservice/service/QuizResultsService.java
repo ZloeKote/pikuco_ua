@@ -23,6 +23,7 @@ import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Sw
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class QuizResultsService {
     public QuizResults getQuizResultsById(int pseudoId, SortQuizResultsType sortType) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         int amountQuestions = quiz.getQuestions().size();
-        int rounds = (int) Math.pow(amountQuestions, 0.5) + 1; // + 1 because last round has 2nd and 1st place
+        int rounds = ((int) Math.round(Math.pow(amountQuestions, 0.5))) + 1; // + 1 because last round has 2nd and 1st place
 
         // find results by quiz id
         MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
@@ -76,29 +77,39 @@ public class QuizResultsService {
         GroupOperation groupOperation = Aggregation.group("question.url")
                 .first("question.title").as("title")
                 .first("question.description").as("description")
+                .first("question.place").as("place")
                 .sum("score").as("totalScore");
 
         SortOperation sortOperation = Aggregation.sort(Sort.Direction.DESC, "totalScore");
-        if (sortType == SortQuizResultsType.SCORE_ASC) {
-            sortOperation = Aggregation.sort(Sort.Direction.ASC, "totalScore");
-        } else if (sortType == SortQuizResultsType.TITLE_ASC) {
-            sortOperation = Aggregation.sort(Sort.Direction.ASC, "title");
-        } else if (sortType == SortQuizResultsType.TITLE_DESC) {
-            sortOperation = Aggregation.sort(Sort.Direction.DESC, "title");
-        }
 
         Aggregation aggregation = Aggregation.newAggregation(matchOperation, unwindResults, unwindQuestions, projectionOperation, groupOperation, sortOperation);
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "quizResults", Document.class);
 
         QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
         List<QuestionResult> questionResultList = new LinkedList<>();
+        int index = 0;
         for (Document doc : results.getMappedResults()) {
             QuestionResult questionResult = new QuestionResult();
             questionResult.setTitle(doc.getString("title"));
             questionResult.setDescription(doc.getString("description"));
             questionResult.setScore(doc.getInteger("totalScore"));
             questionResult.setUrl(doc.getString("_id")); // url
+            questionResult.setPlace(++index);
             questionResultList.add(questionResult);
+        }
+
+        if (sortType == SortQuizResultsType.SCORE_ASC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparingInt(QuestionResult::getPlace).reversed())
+                    .collect(Collectors.toList());
+        } else if (sortType == SortQuizResultsType.TITLE_ASC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparing(QuestionResult::getTitle))
+                    .collect(Collectors.toList());
+        } else if (sortType == SortQuizResultsType.TITLE_DESC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparing(QuestionResult::getTitle).reversed())
+                    .collect(Collectors.toList());
         }
         quizResults.getResults().clear();
         quizResults.getResults().add(new QuizResult(questionResultList, 0L, LocalDateTime.now()));

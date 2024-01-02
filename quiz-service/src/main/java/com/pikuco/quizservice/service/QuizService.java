@@ -51,12 +51,15 @@ public class QuizService {
 
     public List<Quiz> getFilterSortQuizzes(String title,
                                            String type,
+                                           String showRoughDraft,
                                            int numberQuestions,
                                            int creatorId,
                                            SortType sort,
                                            int pageNo,
                                            int pageSize) {
         List<Criteria> criteriaList = new LinkedList<>();
+        if ("false".equals(showRoughDraft))
+            criteriaList.add(Criteria.where("isRoughDraft").is(false));
         if (title != null && !title.isBlank()) {
             criteriaList.add(Criteria.where("title").regex(title, "i"));
         }

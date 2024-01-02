@@ -1,6 +1,7 @@
 package com.pikuco.quizservice.controller;
 
 import com.pikuco.quizservice.dto.QuizDto;
+import com.pikuco.quizservice.entity.Question;
 import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.quizservice.entity.SortQuizResultsType;
 import com.pikuco.quizservice.entity.SortType;
@@ -21,7 +22,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/quizzes")
-@CrossOrigin(origins = "http://localhost:3000")
+//@CrossOrigin(origins = "http://localhost:3000")
 @Tag(name = "Tournament", description = "The Tournament API")
 @AllArgsConstructor
 public class QuizController {
@@ -39,12 +40,13 @@ public class QuizController {
     @GetMapping("/search")
     public ResponseEntity<List<QuizDto>> showFilterSortQuizzes(@RequestParam(name = "title", required = false) String title,
                                                            @RequestParam(name = "type", required = false) String type,
+                                                           @RequestParam(name = "showRoughDraft", defaultValue = "false", required = false) String showRoughDraft,
                                                            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
                                                            @RequestParam(defaultValue = "0", name = "creatorId", required = false) int creatorId,
                                                            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
                                                            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
-        List<QuizDto> quizzes = quizService.getFilterSortQuizzes(title, type, numberQuestions, creatorId, sortType, pageNo, Const.PAGE_SIZE)
+        List<QuizDto> quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, pageNo, Const.PAGE_SIZE)
                 .stream().map(QuizMapper::mapToQuizDto).toList();
         return ResponseEntity.ok(quizzes);
     }
@@ -97,6 +99,7 @@ public class QuizController {
     @GetMapping("/{pseudoId}")
     public ResponseEntity<QuizDto> showQuizByPseudoId(@PathVariable int pseudoId) {
         QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId));
+        Collections.shuffle(quizDto.questions());
         return ResponseEntity.ok(quizDto);
     }
 
