@@ -33,7 +33,6 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request,
                                                            HttpServletResponse response) {
-        System.out.println(request);
         registerValidator.validate(request);
         if (request.getBirthdate() != null &&
                 (request.getBirthdate().after(new Date(114, Calendar.JANUARY, 1)) ||

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface UserService {
     List<User> getAllUsers();
-        User getUserByToken(String token);
+    User getUserByToken(String token);
     Optional<User> getUserByNickname(String nickname);
     Optional<User> getUserByEmail(String email);
 }
