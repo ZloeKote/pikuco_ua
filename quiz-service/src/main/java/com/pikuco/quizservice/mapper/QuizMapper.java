@@ -15,7 +15,9 @@ public class QuizMapper {
                 quiz.getCreator(),
                 quiz.getQuestions(),
                 quiz.getPseudoId(),
-                quiz.isRoughDraft()
+                quiz.isRoughDraft(),
+                quiz.getLanguage(),
+                quiz.getTranslations()
         );
     }
 
@@ -30,6 +32,8 @@ public class QuizMapper {
                 .questions(quizDto.questions())
                 .pseudoId(quizDto.pseudoId())
                 .isRoughDraft(quizDto.isRoughDraft())
+                .language(quizDto.language())
+                .translations(quizDto.translations())
                 .build();
     }
 }

@@ -1,6 +1,5 @@
 package com.pikuco.quizservice.service;
 
-import com.pikuco.quizservice.QuizServiceApplication;
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
 import com.pikuco.quizservice.dto.UserDto;
@@ -9,13 +8,8 @@ import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
 import com.pikuco.quizservice.repository.QuizRepository;
-import com.thoughtworks.xstream.security.NoPermission;
 import feign.FeignException;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.PageRequest;

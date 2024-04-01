@@ -38,14 +38,6 @@ public class QuizResultsService {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         int amountQuestions = quiz.getQuestions().size();
         int rounds = ((int) Math.round(Math.pow(amountQuestions, 0.5))) + 1; // + 1 because last round has 2nd and 1st place
-
-        // find results by quiz id
-        MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
-        // unwind results
-        UnwindOperation unwindResults = Aggregation.unwind("results");
-        // unwind questions
-        UnwindOperation unwindQuestions = Aggregation.unwind("results.questions");
-
         // calculate points for each place using fibonacci sequence
         int[] points = new int[rounds];
         points[0] = 0;
@@ -54,11 +46,20 @@ public class QuizResultsService {
         for (int i = 3; i < rounds; i++) {
             points[i] = points[i - 1] + points[i - 2];
         }
+        QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
+
+        // find results by quiz id
+        MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
+        // unwind results
+        UnwindOperation unwindResults = Aggregation.unwind("results");
+        // unwind questions
+        UnwindOperation unwindQuestions = Aggregation.unwind("results.questions");
 
         // create cases for switch operator to calculate points for each question
         List<CaseOperator> cases = new ArrayList<>();
         for (int i = 1; i <= rounds; i++) {
             int roundAmountPlaces = (int) Math.round(amountQuestions / Math.pow(2, i));
+            // тут можливо можна підрахувати кількість питань просто помноживши кількість місць на 2 (чи навпаки)
             int roundAmountQuestions = (int) Math.round(amountQuestions / Math.pow(2, i - 1));
             int minPlace = roundAmountQuestions - roundAmountPlaces;
 
@@ -85,7 +86,6 @@ public class QuizResultsService {
         Aggregation aggregation = Aggregation.newAggregation(matchOperation, unwindResults, unwindQuestions, projectionOperation, groupOperation, sortOperation);
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "quizResults", Document.class);
 
-        QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
         List<QuestionResult> questionResultList = new LinkedList<>();
         int index = 0;
         for (Document doc : results.getMappedResults()) {

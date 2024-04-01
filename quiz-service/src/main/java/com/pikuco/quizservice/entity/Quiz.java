@@ -1,9 +1,11 @@
 package com.pikuco.quizservice.entity;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -37,4 +39,9 @@ public class Quiz {
     private int pseudoId;
     @Field(name = "isRoughDraft")
     private boolean isRoughDraft;
+    @Field(name = "language")
+    private String language;
+    @Field(name = "translations")
+    private List<QuizTranslation> translations;
 }
+
