@@ -1,6 +1,7 @@
 package com.pikuco.quizservice.controller;
 
 import com.pikuco.quizservice.dto.QuizDto;
+import com.pikuco.quizservice.dto.QuizListDto;
 import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.quizservice.entity.SortQuizResultsType;
 import com.pikuco.quizservice.entity.SortType;
@@ -37,7 +38,7 @@ public class QuizController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<QuizDto>> showFilterSortQuizzes(@RequestParam(name = "title", required = false) String title,
+    public ResponseEntity<QuizListDto> showFilterSortQuizzes(@RequestParam(name = "title", required = false) String title,
                                                            @RequestParam(name = "type", required = false) String type,
                                                            @RequestParam(name = "showRoughDraft", defaultValue = "false", required = false) String showRoughDraft,
                                                            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
@@ -45,8 +46,7 @@ public class QuizController {
                                                            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
                                                            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
-        List<QuizDto> quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, pageNo, Const.PAGE_SIZE)
-                .stream().map(QuizMapper::mapToQuizDto).toList();
+        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, pageNo, Const.PAGE_SIZE);
         return ResponseEntity.ok(quizzes);
     }
 

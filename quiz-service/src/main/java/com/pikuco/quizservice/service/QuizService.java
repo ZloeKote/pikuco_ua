@@ -2,14 +2,18 @@ package com.pikuco.quizservice.service;
 
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
+import com.pikuco.quizservice.dto.QuizDto;
+import com.pikuco.quizservice.dto.QuizListDto;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
+import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.PageRequest;
@@ -43,14 +47,14 @@ public class QuizService {
         return quizRepository.findAll(pageable).getContent();
     }
 
-    public List<Quiz> getFilterSortQuizzes(String title,
-                                           String type,
-                                           String showRoughDraft,
-                                           int numberQuestions,
-                                           int creatorId,
-                                           SortType sort,
-                                           int pageNo,
-                                           int pageSize) {
+    public QuizListDto getFilterSortQuizzes(String title,
+                                            String type,
+                                            String showRoughDraft,
+                                            int numberQuestions,
+                                            int creatorId,
+                                            SortType sort,
+                                            int pageNo,
+                                            int pageSize) {
         List<Criteria> criteriaList = new LinkedList<>();
         if ("false".equals(showRoughDraft))
             criteriaList.add(Criteria.where("isRoughDraft").is(false));
@@ -66,7 +70,6 @@ public class QuizService {
                 criteriaList.add(Criteria.where("questions").size(numberQuestions));
             }
         }
-
         if (creatorId != 0) {
             criteriaList.add(Criteria.where("creator.creator_id").is(creatorId));
         }
@@ -74,21 +77,35 @@ public class QuizService {
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
         LimitOperation limitOperation = Aggregation.limit(pageSize);
         SortOperation sortOperation = null;
-        Aggregation aggregation;
         switch (sort) {
             case HIGHEST_RATED -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.ASC, ""));
             case NEWEST -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt"));
         }
         MatchOperation matchOperation;
+        CountOperation countOperation = Aggregation.count().as("quantity");
+        Aggregation aggregation;
+        Aggregation aggregationCount;
         if (!criteriaList.isEmpty()) {
             matchOperation = Aggregation.match(new Criteria().andOperator(criteriaList));
             aggregation = Aggregation.newAggregation(matchOperation, sortOperation, skipOperation, limitOperation);
+            aggregationCount = Aggregation.newAggregation(matchOperation, countOperation);
         } else {
             aggregation = Aggregation.newAggregation(sortOperation, skipOperation, limitOperation);
+            aggregationCount = Aggregation.newAggregation(countOperation);
         }
         AggregationResults<Quiz> results = mongoTemplate.aggregate(aggregation, "quiz", Quiz.class);
+        HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregationCount, "quiz", HashMap.class)
+                .getUniqueMappedResult();
 
-        return results.getMappedResults();
+        List<QuizDto> quizzes = results.getMappedResults().stream().map(QuizMapper::mapToQuizDto).toList();
+        int numPages;
+        try {
+            numPages = (int) Math.ceil((resultsCountMap.get("quantity") / (double) pageSize));
+        } catch (NullPointerException ex) {
+            numPages = 0;
+        }
+
+        return new QuizListDto(quizzes, numPages);
     }
 
     public List<Quiz> getQuizzesByParticipantId(String authHeader, SortQuizResultsType sort, int PageNo, int pageSize) {
