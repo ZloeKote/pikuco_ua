@@ -1,7 +1,6 @@
-package com.pikuco.quizservice.dto;
+package com.pikuco.quizservice.dto.quiz;
 
 import com.pikuco.quizservice.entity.Question;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 

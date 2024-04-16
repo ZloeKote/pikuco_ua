@@ -2,8 +2,9 @@ package com.pikuco.quizservice.service;
 
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
-import com.pikuco.quizservice.dto.QuizDto;
-import com.pikuco.quizservice.dto.QuizListDto;
+import com.pikuco.quizservice.dto.quiz.QuizCardDto;
+import com.pikuco.quizservice.dto.quiz.QuizDto;
+import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
@@ -13,7 +14,6 @@ import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.PageRequest;
@@ -53,6 +53,7 @@ public class QuizService {
                                             int numberQuestions,
                                             int creatorId,
                                             SortType sort,
+                                            String lang,
                                             int pageNo,
                                             int pageSize) {
         List<Criteria> criteriaList = new LinkedList<>();
@@ -97,7 +98,28 @@ public class QuizService {
         HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregationCount, "quiz", HashMap.class)
                 .getUniqueMappedResult();
 
-        List<QuizDto> quizzes = results.getMappedResults().stream().map(QuizMapper::mapToQuizDto).toList();
+        List<QuizCardDto> quizzes = new ArrayList<>();
+        for (Quiz quiz : results) {
+            QuizCardDto quizCard;
+            QuizCardDto quizCardOriginal = new QuizCardDto(quiz.getTitle(),
+                    quiz.getDescription(),
+                    quiz.getType().getName(),
+                    quiz.getCreator(),
+                    quiz.getPseudoId(),
+                    quiz.getLanguage());
+            if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;
+                // Якщо є переклад на мову, вказану в параметрах - брати її
+            else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang)))
+                quizCard = findQuizCardByLang(quiz, lang, quizCardOriginal);
+                // Якщо немає, то шукати переклад на мову за замовчуванням
+            else if (!"uk".equals(lang) && quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals("uk")))
+                quizCard = findQuizCardByLang(quiz, "uk", quizCardOriginal);
+                // Якщо немає перекладу на мову за замовчуванням або вказана в параметрах мова є мовою оригіналу
+                // то брати мову оригіналу
+            else quizCard = quizCardOriginal;
+
+            quizzes.add(quizCard);
+        }
         int numPages;
         try {
             numPages = (int) Math.ceil((resultsCountMap.get("quantity") / (double) pageSize));
@@ -258,5 +280,22 @@ public class QuizService {
                 throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть посилання на відео")));
         }
         //return true;
+    }
+
+    private QuizCardDto findQuizCardByLang(Quiz quiz, String lang, QuizCardDto original) {
+        QuizTranslation quizTranslation = quiz.getTranslations().stream()
+                .filter((tr) -> tr.getLanguage().equals(lang))
+                .findFirst()
+                .orElse(QuizTranslation.builder()
+                        .title(original.title())
+                        .description(original.description())
+                        .language(original.language())
+                        .build());
+        return new QuizCardDto(quizTranslation.getTitle(),
+                quizTranslation.getDescription(),
+                original.type(),
+                original.creator(),
+                original.pseudoId(),
+                quizTranslation.getLanguage());
     }
 }

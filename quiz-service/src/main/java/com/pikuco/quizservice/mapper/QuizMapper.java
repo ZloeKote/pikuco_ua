@@ -1,6 +1,6 @@
 package com.pikuco.quizservice.mapper;
 
-import com.pikuco.quizservice.dto.QuizDto;
+import com.pikuco.quizservice.dto.quiz.QuizDto;
 import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.quizservice.entity.Type;
 

@@ -1,5 +1,4 @@
-package com.pikuco.quizservice.dto;
-
+package com.pikuco.quizservice.dto.quiz;
 
 import com.pikuco.quizservice.entity.Creator;
 import com.pikuco.quizservice.entity.Question;
@@ -8,7 +7,7 @@ import com.pikuco.quizservice.entity.QuizTranslation;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record QuizDto (
+public record QuizDto(
         String title,
         String description,
         String type,

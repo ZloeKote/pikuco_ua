@@ -1,7 +1,7 @@
 package com.pikuco.quizservice.controller;
 
-import com.pikuco.quizservice.dto.QuizDto;
-import com.pikuco.quizservice.dto.QuizListDto;
+import com.pikuco.quizservice.dto.quiz.QuizDto;
+import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.entity.Quiz;
 import com.pikuco.quizservice.entity.SortQuizResultsType;
 import com.pikuco.quizservice.entity.SortType;
@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
-import org.intellij.lang.annotations.Language;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,9 +43,10 @@ public class QuizController {
                                                            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
                                                            @RequestParam(defaultValue = "0", name = "creatorId", required = false) int creatorId,
                                                            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
+                                                           @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
                                                            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
-        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, pageNo, Const.PAGE_SIZE);
+        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, lang, pageNo, Const.PAGE_SIZE);
         return ResponseEntity.ok(quizzes);
     }
 
