@@ -1,5 +1,6 @@
 package com.pikuco.quizservice.controller;
 
+import com.pikuco.quizservice.dto.quiz.QuizBasicDto;
 import com.pikuco.quizservice.dto.quiz.QuizDto;
 import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.entity.Quiz;
@@ -99,6 +100,12 @@ public class QuizController {
     public ResponseEntity<QuizDto> showQuizByPseudoId(@PathVariable int pseudoId) {
         QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId));
         Collections.shuffle(quizDto.questions());
+        return ResponseEntity.ok(quizDto);
+    }
+
+    @GetMapping("/{pseudoId}/main")
+    public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(@PathVariable int pseudoId) {
+        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId));
         return ResponseEntity.ok(quizDto);
     }
 

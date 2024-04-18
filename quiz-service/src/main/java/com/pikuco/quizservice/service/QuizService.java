@@ -185,13 +185,13 @@ public class QuizService {
         quiz.setId(quizToChange.getId());
         quiz.setCreator(quizToChange.getCreator());
         quiz.setCreatedAt(quizToChange.getCreatedAt());
-        if (!quizToChange.isRoughDraft() && !quiz.isRoughDraft()) {
+        if (!quizToChange.isRoughDraft() && !quiz.isRoughDraft()) { // залишився не чернеткою
             quiz.setUpdatedAt(LocalDateTime.now());
-        } else if (quizToChange.isRoughDraft() && !quiz.isRoughDraft()) {
+        } else if (quizToChange.isRoughDraft() && !quiz.isRoughDraft()) { // був чернеткою -> став не чернеткою
             quiz.setCreatedAt(LocalDateTime.now());
             quiz.setUpdatedAt(quiz.getCreatedAt());
-        } else if (!quizToChange.isRoughDraft() && quiz.isRoughDraft()) {
-            throw new ObjectNotValidException(new HashSet<String>(List.of("Ви не можете замінити вже опублікований турнір на чернетку")));
+        } else if (!quizToChange.isRoughDraft()) { // був не чернеткою -> став чернеткою
+            throw new ObjectNotValidException(new HashSet<>(List.of("Ви не можете замінити вже опублікований турнір на чернетку")));
         }
 
         validateQuiz(quiz);
@@ -219,31 +219,31 @@ public class QuizService {
 
     public Quiz getQuizByPseudoId(int quizId) {
         return quizRepository.findQuizByPseudoId(quizId)
-                .orElseThrow(() -> new ObjectNotFoundException(new HashSet<String>(List.of("Турнір не знайдено"))));
+                .orElseThrow(() -> new ObjectNotFoundException(new HashSet<>(List.of("Турнір не знайдено"))));
     }
 
     private void validateQuiz(Quiz quiz) {
         // validate creator's credentials
         if (quiz.getCreator().getCreator_id() == 0 || (quiz.getCreator().getNickname() == null || quiz.getCreator().getNickname().isBlank()))
-            throw new ObjectNotValidException(new HashSet<String>(List.of("Ви не авторизовані")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("Ви не авторизовані")));
         if (quiz.getCreator().getAvatar() == null || quiz.getCreator().getAvatar().isBlank())
             quiz.getCreator().setAvatar("default avatar");
 
         // validate title
         if (quiz.getTitle() == null || quiz.getTitle().isBlank())
-            throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть назву турніру")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("Введіть назву турніру")));
         else {
             if (quiz.getTitle().length() < 3 || quiz.getTitle().length() > 30)
-                throw new ObjectNotValidException(new HashSet<String>(List.of("Назва турніру повинна містити від 3 до 30 символів")));
+                throw new ObjectNotValidException(new HashSet<>(List.of("Назва турніру повинна містити від 3 до 30 символів")));
         }
 
         // validate description if exists
         if (quiz.getDescription() != null && !quiz.getDescription().isBlank()) {
             if (quiz.getDescription().length() < 5 || quiz.getDescription().length() > 80) {
-                throw new ObjectNotValidException(new HashSet<String>(List.of("Опис турніру повинен містити від 5 до 80 символів")));
+                throw new ObjectNotValidException(new HashSet<>(List.of("Опис турніру повинен містити від 5 до 80 символів")));
             }
         } else if (!quiz.isRoughDraft()) { // if isn't rough draft, description is required
-            throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть опис турніру")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("Введіть опис турніру")));
         }
 
         // validate questions
@@ -258,26 +258,26 @@ public class QuizService {
         if (!quiz.isRoughDraft()) {
             double checkAmountQuestions = Math.log(quiz.getQuestions().size()) / Math.log(2);
             if (checkAmountQuestions % 1 != 0) {
-                throw new ObjectNotValidException(new HashSet<String>(List.of("Невірна кількість питань. Кількість питань повинна дорівнювати числу в степені 2")));
+                throw new ObjectNotValidException(new HashSet<>(List.of("Невірна кількість питань. Кількість питань повинна дорівнювати числу в степені 2")));
             }
         }
         for (Question q : quiz.getQuestions()) {
             if (q.getTitle() != null && !q.getTitle().isBlank()) {
                 if (q.getTitle().length() < 3 || q.getTitle().length() > 30)
-                    throw new ObjectNotValidException(new HashSet<String>(List.of("Назва питання повинно містити від 3 до 30 символів")));
+                    throw new ObjectNotValidException(new HashSet<>(List.of("Назва питання повинно містити від 3 до 30 символів")));
             } else
-                throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть назву питання")));
+                throw new ObjectNotValidException(new HashSet<>(List.of("Введіть назву питання")));
 
             if (q.getDescription() != null && !q.getDescription().isBlank()) {
                 if (q.getDescription().length() < 5 || q.getDescription().length() > 80)
-                    throw new ObjectNotValidException(new HashSet<String>(List.of("Опис питання повинно містити від 5 до 80 символів")));
+                    throw new ObjectNotValidException(new HashSet<>(List.of("Опис питання повинно містити від 5 до 80 символів")));
             }
 
             if (q.getUrl() != null && !q.getUrl().isBlank()) {
                 if (!pattern.matcher(q.getUrl()).matches())
-                    throw new ObjectNotValidException(new HashSet<String>(List.of("Невірний формат посилання")));
+                    throw new ObjectNotValidException(new HashSet<>(List.of("Невірний формат посилання")));
             } else
-                throw new ObjectNotValidException(new HashSet<String>(List.of("Введіть посилання на відео")));
+                throw new ObjectNotValidException(new HashSet<>(List.of("Введіть посилання на відео")));
         }
         //return true;
     }
