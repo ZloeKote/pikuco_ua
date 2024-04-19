@@ -43,7 +43,9 @@ public class QuizResultsMapper {
                 questionResult.getDescription(),
                 questionResult.getUrl(),
                 questionResult.getScore(),
-                questionResult.getPlace());
+                questionResult.getPlace(),
+                "",
+                new ArrayList<>());
     }
 
     public static QuestionResult mapToQuestionResult(QuestionResultDto questionResultDto) {

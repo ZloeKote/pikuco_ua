@@ -2,9 +2,10 @@ package com.pikuco.quizservice.service;
 
 import com.mongodb.DBRef;
 import com.pikuco.quizservice.api.UserAPIClient;
-import com.pikuco.quizservice.dto.UserDto;
+import com.pikuco.quizservice.dto.*;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
+import com.pikuco.quizservice.mapper.QuizResultsMapper;
 import com.pikuco.quizservice.repository.QuizResultsRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class QuizResultsService {
     @Getter
     private final QuizService quizService;
 
-    public QuizResults getQuizResultsById(int pseudoId, SortQuizResultsType sortType) {
+    public QuizResultsDto getQuizResultsById(int pseudoId, SortQuizResultsType sortType) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         int amountQuestions = quiz.getQuestions().size();
         int rounds = ((int) Math.round(Math.pow(amountQuestions, 0.5))) + 1; // + 1 because last round has 2nd and 1st place
@@ -86,34 +87,60 @@ public class QuizResultsService {
         Aggregation aggregation = Aggregation.newAggregation(matchOperation, unwindResults, unwindQuestions, projectionOperation, groupOperation, sortOperation);
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "quizResults", Document.class);
 
-        List<QuestionResult> questionResultList = new LinkedList<>();
+        List<QuestionResultDto> questionResultList = new LinkedList<>();
         int index = 0;
-        for (Document doc : results.getMappedResults()) {
-            QuestionResult questionResult = new QuestionResult();
-            questionResult.setTitle(doc.getString("title"));
-            questionResult.setDescription(doc.getString("description"));
-            questionResult.setScore(doc.getInteger("totalScore"));
-            questionResult.setUrl(doc.getString("_id")); // url
-            questionResult.setPlace(++index);
-            questionResultList.add(questionResult);
+        if (quiz.getTranslations() != null) {
+            for (Document doc : results.getMappedResults()) {
+                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
+                for (QuizTranslation quizTranslation : quiz.getTranslations()) {
+                    Question translatedQuestion = quizTranslation.getQuestions().stream()
+                            .filter((tr) -> tr.getUrl().equals(doc.getString("_id"))).findFirst()
+                            .orElse(new Question(doc.getString("title"),
+                                    doc.getString("description"),
+                                    doc.getString("_id")));
+                    QuestionTranslationDto questionTranslationDto = new QuestionTranslationDto(translatedQuestion.getTitle(),
+                            translatedQuestion.getDescription(), quizTranslation.getLanguage());
+                    questionTranslationDtoList.add(questionTranslationDto);
+                }
+                QuestionResultDto questionResult = new QuestionResultDto(doc.getString("title"),
+                        doc.getString("description"),
+                        doc.getString("_id"),
+                        doc.getInteger("totalScore"),
+                        ++index,
+                        quiz.getLanguage(),
+                        questionTranslationDtoList);
+                questionResultList.add(questionResult);
+            }
+        } else {
+            for (Document doc : results.getMappedResults()) {
+                QuestionResultDto questionResult = new QuestionResultDto(doc.getString("title"),
+                        doc.getString("description"),
+                        doc.getString("_id"),
+                        doc.getInteger("totalScore"),
+                        ++index,
+                        quiz.getLanguage(),
+                        new ArrayList<>());
+                questionResultList.add(questionResult);
+            }
         }
 
         if (sortType == SortQuizResultsType.SCORE_ASC) {
             questionResultList = questionResultList.stream()
-                    .sorted(Comparator.comparingInt(QuestionResult::getPlace).reversed())
+                    .sorted(Comparator.comparingInt(QuestionResultDto::place).reversed())
                     .collect(Collectors.toList());
         } else if (sortType == SortQuizResultsType.TITLE_ASC) {
             questionResultList = questionResultList.stream()
-                    .sorted(Comparator.comparing(QuestionResult::getTitle))
+                    .sorted(Comparator.comparing(QuestionResultDto::title))
                     .collect(Collectors.toList());
         } else if (sortType == SortQuizResultsType.TITLE_DESC) {
             questionResultList = questionResultList.stream()
-                    .sorted(Comparator.comparing(QuestionResult::getTitle).reversed())
+                    .sorted(Comparator.comparing(QuestionResultDto::title).reversed())
                     .collect(Collectors.toList());
         }
         quizResults.getResults().clear();
-        quizResults.getResults().add(new QuizResult(questionResultList, 0L, LocalDateTime.now()));
-        return quizResults;
+
+        return new QuizResultsDto(new QuizResultDto(questionResultList,
+                0L, LocalDateTime.now()));
     }
 
     public QuizResults getIndividualQuizResults(String authHeader, int pseudoId, SortQuizResultsType sortType) {

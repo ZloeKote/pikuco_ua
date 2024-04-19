@@ -21,7 +21,7 @@ public class QuizResultsController {
     public ResponseEntity<QuizResultsDto> showQuizResultsByQuizId(@PathVariable int pseudoId,
                                                                   @RequestParam(defaultValue = "SCORE_DESC", name = "sort", required = false) String sort) {
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.SCORE_DESC;
-        QuizResultsDto quizResults = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getQuizResultsById(pseudoId, sortType));
+        QuizResultsDto quizResults = quizResultsService.getQuizResultsById(pseudoId, sortType);
         return ResponseEntity.ok(quizResults);
     }
 
