@@ -8,6 +8,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(url = "http://localhost:9091", value = "USER-SERVICE")
 public interface UserAPIClient {
-    @GetMapping("api/v1/user")
+    @GetMapping("api/v1/users")
     ResponseEntity<UserDto> showUserByToken(@RequestHeader("Authorization") String authHeader);
 }

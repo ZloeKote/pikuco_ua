@@ -2,19 +2,19 @@ package com.pikuco.quizservice.service;
 
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
-import com.pikuco.quizservice.dto.quiz.QuizCardDto;
-import com.pikuco.quizservice.dto.quiz.QuizDto;
-import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.dto.UserDto;
+import com.pikuco.quizservice.dto.quiz.QuizCardDto;
+import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
-import com.pikuco.quizservice.mapper.QuizMapper;
+import com.pikuco.quizservice.mapper.CreatorMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,7 +51,7 @@ public class QuizService {
                                             String type,
                                             String showRoughDraft,
                                             int numberQuestions,
-                                            int creatorId,
+                                            String creatorNickname,
                                             SortType sort,
                                             String lang,
                                             int pageNo,
@@ -71,8 +71,8 @@ public class QuizService {
                 criteriaList.add(Criteria.where("questions").size(numberQuestions));
             }
         }
-        if (creatorId != 0) {
-            criteriaList.add(Criteria.where("creator.creator_id").is(creatorId));
+        if (creatorNickname != null) {
+            criteriaList.add(Criteria.where("creator.nickname").is(creatorNickname));
         }
 
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
@@ -98,28 +98,7 @@ public class QuizService {
         HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregationCount, "quiz", HashMap.class)
                 .getUniqueMappedResult();
 
-        List<QuizCardDto> quizzes = new ArrayList<>();
-        for (Quiz quiz : results) {
-            QuizCardDto quizCard;
-            QuizCardDto quizCardOriginal = new QuizCardDto(quiz.getTitle(),
-                    quiz.getDescription(),
-                    quiz.getType().getName(),
-                    quiz.getCreator(),
-                    quiz.getPseudoId(),
-                    quiz.getLanguage());
-            if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;
-                // Якщо є переклад на мову, вказану в параметрах - брати її
-            else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang)))
-                quizCard = findQuizCardByLang(quiz, lang, quizCardOriginal);
-                // Якщо немає, то шукати переклад на мову за замовчуванням
-            else if (!"uk".equals(lang) && quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals("uk")))
-                quizCard = findQuizCardByLang(quiz, "uk", quizCardOriginal);
-                // Якщо немає перекладу на мову за замовчуванням або вказана в параметрах мова є мовою оригіналу
-                // то брати мову оригіналу
-            else quizCard = quizCardOriginal;
-
-            quizzes.add(quizCard);
-        }
+        List<QuizCardDto> quizzes = mapQuizListToQuizCardDtoList(lang, "uk", results.getMappedResults());
         int numPages;
         try {
             numPages = (int) Math.ceil((resultsCountMap.get("quantity") / (double) pageSize));
@@ -130,7 +109,7 @@ public class QuizService {
         return new QuizListDto(quizzes, numPages);
     }
 
-    public List<Quiz> getQuizzesByParticipantId(String authHeader, SortQuizResultsType sort, int PageNo, int pageSize) {
+    public QuizListDto getQuizzesByParticipantId(String authHeader, SortQuizResultsType sort, String lang, int PageNo, int pageSize) {
         try {
             ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
             Long participantId = Objects.requireNonNull(responseEntity.getBody()).id();
@@ -139,9 +118,17 @@ public class QuizService {
             List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizIds);
             Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
 
-            return quizIds.stream()
-                    .map(quizMap::get)
-                    .toList();
+            List<Quiz> quizzes = quizIds.stream().map(quizMap::get).toList();
+            List<QuizCardDto> quizCards = mapQuizListToQuizCardDtoList(lang, "uk", quizzes);
+            int numQuizzes = quizResultsService.getNumQuizzesByParticipantId(participantId);
+            int numPages;
+            try {
+                numPages = (int) Math.ceil((numQuizzes / (double) pageSize));
+            } catch (NullPointerException ex) {
+                numPages = 0;
+            }
+
+            return new QuizListDto(quizCards, numPages);
         } catch (FeignException e) {
             throw new NonAuthorizedException("Ви не авторизовані");
         } catch (Exception e) {
@@ -279,7 +266,32 @@ public class QuizService {
             } else
                 throw new ObjectNotValidException(new HashSet<>(List.of("Введіть посилання на відео")));
         }
-        //return true;
+    }
+
+    private @NotNull List<QuizCardDto> mapQuizListToQuizCardDtoList(String lang, String defaultLang, List<Quiz> results) {
+        List<QuizCardDto> quizzes = new ArrayList<>(results.size());
+        for (Quiz quiz : results) {
+            QuizCardDto quizCard;
+            QuizCardDto quizCardOriginal = new QuizCardDto(quiz.getTitle(),
+                    quiz.getDescription(),
+                    quiz.getType().getName(),
+                    CreatorMapper.mapToCreatorDto(quiz.getCreator()),
+                    quiz.getPseudoId(),
+                    quiz.getLanguage());
+            if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;
+                // Якщо є переклад на мову, вказану в параметрах - брати її
+            else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang)))
+                quizCard = findQuizCardByLang(quiz, lang, quizCardOriginal);
+                // Якщо немає, то шукати переклад на мову за замовчуванням
+            else if (!"uk".equals(lang) && quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(defaultLang)))
+                quizCard = findQuizCardByLang(quiz, defaultLang, quizCardOriginal);
+                // Якщо немає перекладу на мову за замовчуванням або вказана в параметрах мова є мовою оригіналу
+                // то брати мову оригіналу
+            else quizCard = quizCardOriginal;
+
+            quizzes.add(quizCard);
+        }
+        return quizzes;
     }
 
     private QuizCardDto findQuizCardByLang(Quiz quiz, String lang, QuizCardDto original) {

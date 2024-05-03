@@ -257,4 +257,18 @@ public class QuizResultsService {
         System.out.println(quizzesId);
         return quizzesId;
     }
+
+    public int getNumQuizzesByParticipantId(long participantId) {
+        MatchOperation matchOperation = Aggregation.match(Criteria.where("results").elemMatch(Criteria.where("participant_id").is(participantId)));
+        UnwindOperation unwindOperation = Aggregation.unwind("results");
+        MatchOperation matchOperation1 = Aggregation.match(Criteria.where("results.participant_id").is(participantId));
+        CountOperation countOperation = Aggregation.count().as("quantity");
+
+        Aggregation aggregation = Aggregation.newAggregation(matchOperation, unwindOperation, matchOperation1, countOperation);
+        HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregation, "quizResults", HashMap.class)
+                .getUniqueMappedResult();
+
+        assert resultsCountMap != null;
+        return resultsCountMap.get("quantity");
+    }
 }

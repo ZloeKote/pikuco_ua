@@ -1,5 +1,6 @@
 package com.pikuco.quizservice.dto.quiz;
 
+import com.pikuco.quizservice.dto.CreatorDto;
 import com.pikuco.quizservice.entity.Creator;
 import com.pikuco.quizservice.entity.Question;
 import com.pikuco.quizservice.entity.QuizTranslation;
@@ -13,7 +14,7 @@ public record QuizDto(
         String type,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        Creator creator,
+        CreatorDto creator,
         List<Question> questions,
         int pseudoId,
         boolean isRoughDraft,

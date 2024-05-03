@@ -18,7 +18,7 @@ public class QuizMapper {
                 quiz.getType().getName(),
                 quiz.getCreatedAt(),
                 quiz.getUpdatedAt(),
-                quiz.getCreator(),
+                CreatorMapper.mapToCreatorDto(quiz.getCreator()),
                 quiz.getQuestions(),
                 quiz.getPseudoId(),
                 quiz.isRoughDraft(),
@@ -70,7 +70,7 @@ public class QuizMapper {
                 .type(Type.valueOf(quizDto.type()))
                 .createdAt(quizDto.createdAt())
                 .updatedAt(quizDto.updatedAt())
-                .creator(quizDto.creator())
+                .creator(CreatorMapper.mapToCreator(quizDto.creator()))
                 .questions(quizDto.questions())
                 .pseudoId(quizDto.pseudoId())
                 .isRoughDraft(quizDto.isRoughDraft())

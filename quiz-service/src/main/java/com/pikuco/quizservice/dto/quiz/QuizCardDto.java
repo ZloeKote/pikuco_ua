@@ -1,12 +1,12 @@
 package com.pikuco.quizservice.dto.quiz;
 
-import com.pikuco.quizservice.entity.Creator;
+import com.pikuco.quizservice.dto.CreatorDto;
 
 public record QuizCardDto(
         String title,
         String description,
         String type,
-        Creator creator,
+        CreatorDto creator,
         int pseudoId,
         String language
 ) {

@@ -12,7 +12,7 @@ import java.util.List;
 
 public class QuizResultsMapper {
     public static QuizResultsDto mapToQuizResultsDto(QuizResults quizResults) {
-        return new QuizResultsDto(mapToQuizResultDto(quizResults.getResults().get(0)));
+        return new QuizResultsDto(mapToQuizResultDto(quizResults.getResults().getFirst()));
     }
 
     public static QuizResults mapToQuizResults(QuizResultsDto quizResultsDto) {

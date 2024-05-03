@@ -42,26 +42,26 @@ public class QuizController {
                                                            @RequestParam(name = "type", required = false) String type,
                                                            @RequestParam(name = "showRoughDraft", defaultValue = "false", required = false) String showRoughDraft,
                                                            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
-                                                           @RequestParam(defaultValue = "0", name = "creatorId", required = false) int creatorId,
+                                                           @RequestParam(name = "creatorNickname", required = false) String creatorNickname,
                                                            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
                                                            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
                                                            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
-        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorId, sortType, lang, pageNo, Const.PAGE_SIZE);
+        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorNickname, sortType, lang, pageNo, Const.PAGE_SIZE);
         return ResponseEntity.ok(quizzes);
     }
 
     @GetMapping("/user")
-    public ResponseEntity<List<QuizDto>> showQuizzesByParticipantId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+    public ResponseEntity<QuizListDto> showQuizzesByParticipantId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
                                                                    @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
+                                                                  @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
                                                                    @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.NEWEST;
 
-        List<QuizDto> quizzes = quizService.getQuizzesByParticipantId(authHeader, sortType, pageNo, Const.PAGE_SIZE)
-                .stream().map(QuizMapper::mapToQuizDto).toList();
+        QuizListDto quizzes = quizService.getQuizzesByParticipantId(authHeader, sortType, lang, pageNo, Const.PAGE_SIZE_USER_COMPLETED_QUIZZES);
         return ResponseEntity.ok(quizzes);
     }
 
