@@ -19,9 +19,9 @@ public class AuthenticationRequest {
     @NotBlank(message = "Пошта не може бути порожньою")
     @Pattern(regexp = "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-]+$", message = "Невірний формат пошти")
     private String email;
-    @NotNull(message = "Пошта не може бути порожньою")
-    @NotEmpty(message = "Пошта не може бути порожньою")
-    @NotBlank(message = "Пошта не може бути порожньою")
+    @NotNull(message = "Пароль не може бути порожнім")
+    @NotEmpty(message = "Пароль не може бути порожнім")
+    @NotBlank(message = "Пароль не може бути порожнім")
     @Pattern(regexp = "^(?=.*[a-zA-Z]).+$", message = "Пароль повинен мати хоча б одну літеру")
     @Pattern(regexp = ".*\\d.*", message = "Пароль повинен мати хоча б одну цифру")
     @Pattern(regexp = ".{6,20}", message = "Пароль повинен мати не менше 6 символів та не більше 20")

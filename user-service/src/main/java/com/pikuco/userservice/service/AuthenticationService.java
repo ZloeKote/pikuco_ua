@@ -60,6 +60,7 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .email(savedUser.getEmail())
+                .nickname(savedUser.getNickname())
                 .avatar(savedUser.getAvatar())
                 .build();
     }
@@ -87,6 +88,7 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .email(user.getEmail())
+                .nickname(user.getNickname())
                 .avatar(user.getAvatar())
                 .build();
     }
@@ -137,6 +139,7 @@ public class AuthenticationService {
                 return AuthenticationResponse.builder()
                         .accessToken(accessToken)
                         .email(user.getEmail())
+                        .nickname(user.getNickname())
                         .avatar(user.getAvatar())
                         .build();
             }
