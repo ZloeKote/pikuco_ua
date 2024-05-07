@@ -72,7 +72,7 @@ public class QuizService {
             }
         }
         if (creatorNickname != null) {
-            criteriaList.add(Criteria.where("creator.nickname").is(creatorNickname));
+            criteriaList.add(Criteria.where("creator.nickname").regex(creatorNickname, "i"));
         }
 
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
