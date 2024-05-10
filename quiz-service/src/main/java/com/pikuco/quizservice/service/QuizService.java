@@ -60,7 +60,8 @@ public class QuizService {
         if ("false".equals(showRoughDraft))
             criteriaList.add(Criteria.where("isRoughDraft").is(false));
         if (title != null && !title.isBlank()) {
-            criteriaList.add(Criteria.where("title").regex(title, "i"));
+            criteriaList.add(new Criteria().orOperator(Criteria.where("title").regex(title, "i"),
+                    Criteria.where("translations.title").regex(title, "i")));
         }
         if (type != null && !type.isBlank()) {
             criteriaList.add(Criteria.where("type").is(Type.valueOf(type)));
