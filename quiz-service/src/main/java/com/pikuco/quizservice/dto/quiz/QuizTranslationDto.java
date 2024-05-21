@@ -8,6 +8,6 @@ public record QuizTranslationDto(
         String title,
         String description,
         String language,
-        List<Question>questions
+        List<Question> questions
 ) {
 }

@@ -15,6 +15,7 @@ public record QuizBasicDto(
         int pseudoId,
         boolean isRoughDraft,
         String language,
+        String[] languages,
         int amountQuestions,
         List<QuizTranslationBasicDto> translations
 ) {

@@ -8,8 +8,9 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 public enum Type {
-    TOURNAMENT_VIDEO("Tournament - Video"),
-    TOURNAMENT_PICTURE("Tournament - Picture");
+    TOURNAMENT_VIDEO("Tournament - Video", "TOURNAMENT_VIDEO"),
+    TOURNAMENT_PICTURE("Tournament - Picture", "TOURNAMENT_PICTURE");
 
     private final String name;
+    private final String value;
 }

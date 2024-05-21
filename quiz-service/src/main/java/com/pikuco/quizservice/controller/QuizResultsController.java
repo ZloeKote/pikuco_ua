@@ -38,7 +38,7 @@ public class QuizResultsController {
     }
 
     // Realizes 3 scenarios:
-    // 1 - create new quiz results if quiz results with this quiz id doesn't exist yes
+    // 1 - create new quiz results if quiz results with this quiz id hasn't existed yet
     // 2 - add to existing quiz results new results
     // 3 - update existing quiz results if participant already has results for this quiz
     @PostMapping("/{pseudoId}")

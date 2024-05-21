@@ -73,12 +73,12 @@ public class EvaluationService {
             evaluation.setEvaluation(0);
         }
 
+        // if user is not authorized, then return evaluation
+        // if user is authorized, then find his evaluation
         ResponseEntity<Long> userResponse;
         try {
             userResponse = userAPI.showUserIdByToken(authHeader);
         } catch (FeignException e) {
-            evaluation.setLiked(false);
-            evaluation.setDisliked(false);
             return evaluation;
         }
 
@@ -90,20 +90,17 @@ public class EvaluationService {
         Document evaluationWithUserDoc = mongoTemplate.aggregate(aggregationQuizWithUser,
                 "evaluation", Document.class).getUniqueMappedResult();
 
+        // if authorized user have not evaluate quiz yet, then return evaluation
         Boolean isLiked;
         try {
             isLiked = Objects.requireNonNull(evaluationWithUserDoc).getBoolean("isLiked");
         } catch (NullPointerException e) {
-            evaluation.setLiked(false);
-            evaluation.setDisliked(false);
             return evaluation;
         }
 
         if (isLiked) {
             evaluation.setLiked(true);
-            evaluation.setDisliked(false);
         } else {
-            evaluation.setLiked(false);
             evaluation.setDisliked(true);
         }
 
@@ -137,17 +134,15 @@ public class EvaluationService {
         String quizId = quizAPI.showQuizIdByPseudoId(pseudoId).getBody();
 
         if (quizId == null) {
-            throw new NonAuthorizedException("Ви не авторизовані");
+            throw new NoSuchElementException("Такої вікторини не існує");
         }
 
         ResponseEntity<Long> userResponse;
         try {
             userResponse = userAPI.showUserIdByToken(authHeader);
             return Pair.of(Objects.requireNonNull(userResponse.getBody()), quizId);
-        } catch (FeignException e) {
+        } catch (FeignException | NullPointerException e) {
             throw new NonAuthorizedException("Ви не авторизовані");
-        } catch (NullPointerException e) {
-            throw new NoSuchElementException("Такої вікторини не існує");
         }
 
     }

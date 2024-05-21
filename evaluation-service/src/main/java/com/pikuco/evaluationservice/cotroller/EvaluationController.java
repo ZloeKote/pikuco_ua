@@ -20,7 +20,7 @@ public class EvaluationController {
     }
 
     @PostMapping("/quizzes/{pseudoId}")
-    public ResponseEntity<?> addEvaluation(@RequestHeader(required = false, value = "Authorization") String authHeader,
+    public ResponseEntity<?> addEvaluation(@RequestHeader(required = true, value = "Authorization") String authHeader,
                                            @PathVariable int pseudoId,
                                            @RequestBody AddEvaluationRequest isLiked) {
         evaluationService.addEvaluation(authHeader, pseudoId, isLiked.getIsLiked());
@@ -28,7 +28,7 @@ public class EvaluationController {
     }
 
     @DeleteMapping("/quizzes/{pseudoId}")
-    public ResponseEntity<?> deleteEvaluation(@RequestHeader(required = false, value = "Authorization") String authHeader,
+    public ResponseEntity<?> deleteEvaluation(@RequestHeader(required = true, value = "Authorization") String authHeader,
                                               @PathVariable int pseudoId) {
         evaluationService.deleteEvaluation(authHeader, pseudoId);
         return ResponseEntity.ok().build();

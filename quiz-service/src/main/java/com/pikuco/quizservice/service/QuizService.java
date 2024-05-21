@@ -4,12 +4,14 @@ import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.dto.quiz.QuizCardDto;
+import com.pikuco.quizservice.dto.quiz.QuizDto;
 import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
 import com.pikuco.quizservice.mapper.CreatorMapper;
+import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -143,26 +145,30 @@ public class QuizService {
             throw new NonAuthorizedException("Ви не авторизовані");
         UserDto user = Objects.requireNonNull(responseEntity.getBody());
 
-        if (quiz.getPseudoId() != 0)
-            throw new ObjectNotValidException(new HashSet<String>(List.of("Ви не можете додати вікторину, яка вже була створена!")));
+//        if (quiz.getPseudoId() != 0)
+//            throw new ObjectNotValidException(new HashSet<>(List.of("Ви не можете додати вікторину, яка вже була створена!")));
 
-        int greatestId = quizRepository.findFirstByOrderByPseudoIdDesc().orElseThrow().getPseudoId();
-        quiz.setPseudoId(++greatestId);
-        if (!quiz.isRoughDraft())
+        // if quiz hasn't been created yet, then find pseudo id for it.
+        // On other way, set quiz id to update information
+        if (quiz.getPseudoId() == 0) {
+            int greatestId = quizRepository.findFirstByOrderByPseudoIdDesc().orElseThrow().getPseudoId();
+            quiz.setPseudoId(++greatestId);
+        } else {
+            quiz.setId(getQuizByPseudoId(quiz.getPseudoId()).getId());
+        }
+        if (!quiz.isRoughDraft()) {
+            quiz.setCreatedAt(LocalDateTime.now());
             quiz.setUpdatedAt(quiz.getCreatedAt());
+        }
         quiz.setCreator(new Creator(user.id(), user.nickname(), user.avatar()));
         validateQuiz(quiz); // validate quiz
-        quiz.setCreatedAt(LocalDateTime.now());
-        greatestId = quizRepository.insert(quiz).getPseudoId();
-        if (greatestId == 0) throw new NullPointerException("Quiz was not added");
-        return greatestId;
+        int pseudoId = quizRepository.save(quiz).getPseudoId();
+        if (pseudoId == 0) throw new NullPointerException("Quiz was not added");
+        return pseudoId;
     }
 
     public void changeQuiz(String authHeader, Quiz quiz) {
-        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
-        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
-            throw new NonAuthorizedException("Ви не авторизовані");
-        Long creatorId = Objects.requireNonNull(responseEntity.getBody()).id();
+        Long creatorId = getUser(authHeader).id();
 
         Quiz quizToChange = quizRepository.findQuizByPseudoId(quiz.getPseudoId())
                 .orElseThrow(() -> new ObjectNotFoundException(new HashSet<String>(List.of("Турнір не знайдено"))));
@@ -189,20 +195,66 @@ public class QuizService {
     }
 
     public void deleteQuiz(String authHeader, int pseudoId) {
-        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
-        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
-            throw new NonAuthorizedException("Ви не авторизовані");
-        Long creatorId = Objects.requireNonNull(responseEntity.getBody()).id();
+        Long creatorId = getUser(authHeader).id();
 
         Quiz quizToDelete = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
-                new ObjectNotFoundException(new HashSet<String>(List.of("Турнір не знайдено"))));
+                new ObjectNotFoundException(new HashSet<>(List.of("Турнір не знайдено"))));
         if (Objects.equals(quizToDelete.getCreator().getCreator_id(), creatorId)) {
-            quizRepository.deleteById(quizToDelete.getId());
             QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
-            quizResultsService.deleteQuizResultsByQuizId(quizToDelete.getPseudoId());
+            quizResultsService.deleteQuizResultsByQuizId(quizToDelete.getId());
+            quizRepository.deleteById(quizToDelete.getId());
             return;
         }
         throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
+    }
+
+    public void addQuizTranslation(String authHeader, int pseudoId, QuizTranslation quizTranslation) {
+        Long creatorId = getUser(authHeader).id();
+
+        Quiz quiz = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
+                new ObjectNotFoundException(new HashSet<>(List.of("Турнір не знайдено"))));
+
+        // validate quiz translation
+        validateQuizTranslation(quiz, quizTranslation, null);
+
+        if (Objects.equals(quiz.getCreator().getCreator_id(), creatorId)) {
+            if (quiz.getTranslations() == null) {
+                List<QuizTranslation> quizTranslations = new ArrayList<>();
+                quizTranslations.add(quizTranslation);
+                quiz.setTranslations(quizTranslations);
+            } else {
+                quiz.getTranslations().add(quizTranslation);
+            }
+        } else {
+            throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
+        }
+        quizRepository.save(quiz);
+    }
+
+    public void editQuizTranslation(String authHeader, int pseudoId, QuizTranslation quizTranslation, String language) {
+        Long creatorId = getUser(authHeader).id();
+
+        Quiz quiz = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
+                new ObjectNotFoundException(new HashSet<>(List.of("Турнір не знайдено"))));
+
+        if (Objects.equals(quiz.getCreator().getCreator_id(), creatorId)) {
+            if (quiz.getTranslations() != null) {
+                for (int i = 0; i < quiz.getTranslations().size(); i++) {
+                    if (quiz.getTranslations().get(i).getLanguage().equals(language)) {
+                        validateQuizTranslation(quiz, quizTranslation, language);
+                        quiz.getTranslations().set(i, quizTranslation);
+                        quizRepository.save(quiz);
+                        return;
+                    }
+                }
+            } else {
+                throw new ObjectNotFoundException(new HashSet<>(List.of("Такого перекладу не існує")));
+            }
+        } else {
+            throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
+        }
+
+        throw new ObjectNotFoundException(new HashSet<>(List.of("Перекладу на мову" + language + " не знайдено!")));
     }
 
     public Quiz getQuizByPseudoId(int quizId) {
@@ -235,21 +287,65 @@ public class QuizService {
         }
 
         // validate questions
+        validateQuestions(quiz.getQuestions(), quiz.isRoughDraft(), quiz.getType(), quiz.getQuestions().size());
+    }
+
+    private void validateQuizTranslation(Quiz quiz, QuizTranslation quizTranslation, String language) {
+        // check if there is quiz translation on this language
+        // if attribute 'language' exists, then it means that existing quiz translation is validating
+        if (quiz.getTranslations() != null && language == null) {
+            if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(quizTranslation.getLanguage()))) {
+                throw new ObjectNotValidException(new HashSet<>(List.of(
+                        "Переклад вікторини на мову " + quizTranslation.getLanguage() + " вже існує")));
+            }
+        } else if (language != null) {
+            if (!quizTranslation.getLanguage().equals(language)) {
+                throw new ObjectNotValidException(new HashSet<>(List.of(
+                        "Перекладу вікторини на мову " + quizTranslation.getLanguage() + " не існує")));
+            }
+        }
+        // validate title
+        if (quizTranslation.getTitle() == null || quizTranslation.getTitle().isBlank())
+            throw new ObjectNotValidException(new HashSet<>(List.of("Введіть назву турніру")));
+        else {
+            if (quizTranslation.getTitle().length() < 3 || quiz.getTitle().length() > 30)
+                throw new ObjectNotValidException(new HashSet<>(List.of("Назва турніру повинна містити від 3 до 30 символів")));
+        }
+
+        // validate description if exists
+        if (quizTranslation.getDescription() != null && !quizTranslation.getDescription().isBlank()) {
+            if (quizTranslation.getDescription().length() < 5 || quizTranslation.getDescription().length() > 80) {
+                throw new ObjectNotValidException(new HashSet<>(List.of("Опис турніру повинен містити від 5 до 80 символів")));
+            }
+        } else {
+            throw new ObjectNotValidException(new HashSet<>(List.of("Введіть опис турніру")));
+        }
+
+        // validate questions
+        if (quiz.getQuestions().size() != quizTranslation.getQuestions().size()) {
+            throw new ObjectNotValidException(new HashSet<>(List.of("Кількість питань переводу не відповідає кількості питань вікторини!")));
+        }
+        validateQuestions(quizTranslation.getQuestions(), false, quiz.getType(), quizTranslation.getQuestions().size());
+    }
+
+    private void validateQuestions(List<Question> questions, boolean isRoughDraft, Type type, int numQuestions) {
         String regex;
-        if (quiz.getType() == Type.TOURNAMENT_VIDEO)
+        if (type == Type.TOURNAMENT_VIDEO)
             regex = "((https?:)?//)?((www|m)\\.)?(youtube\\.com|youtu\\.be)(/([\\w\\-]+[?]v=|embed/|v/)?)([_\\w\\-]{11})([?|&]\\S+)?"; // youtube url
         else
             regex = "[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)"; // any url
 
         Pattern pattern = Pattern.compile(regex);
+
         // if isn't rough draft, check amount of questions
-        if (!quiz.isRoughDraft()) {
-            double checkAmountQuestions = Math.log(quiz.getQuestions().size()) / Math.log(2);
+        if (!isRoughDraft) {
+            double checkAmountQuestions = Math.round(Math.log(numQuestions / Math.log(2)));
             if (checkAmountQuestions % 1 != 0) {
                 throw new ObjectNotValidException(new HashSet<>(List.of("Невірна кількість питань. Кількість питань повинна дорівнювати числу в степені 2")));
             }
         }
-        for (Question q : quiz.getQuestions()) {
+
+        for (Question q : questions) {
             if (q.getTitle() != null && !q.getTitle().isBlank()) {
                 if (q.getTitle().length() < 3 || q.getTitle().length() > 30)
                     throw new ObjectNotValidException(new HashSet<>(List.of("Назва питання повинно містити від 3 до 30 символів")));
@@ -273,21 +369,15 @@ public class QuizService {
         List<QuizCardDto> quizzes = new ArrayList<>(results.size());
         for (Quiz quiz : results) {
             QuizCardDto quizCard;
-            QuizCardDto quizCardOriginal = new QuizCardDto(quiz.getTitle(),
-                    quiz.getDescription(),
-                    quiz.getType().getName(),
-                    CreatorMapper.mapToCreatorDto(quiz.getCreator()),
-                    quiz.getPseudoId(),
-                    quiz.getLanguage());
+            QuizCardDto quizCardOriginal = QuizMapper.mapToQuizCardDto(quiz);
             if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;
                 // Якщо є переклад на мову, вказану в параметрах - брати її
             else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang)))
                 quizCard = findQuizCardByLang(quiz, lang, quizCardOriginal);
                 // Якщо немає, то шукати переклад на мову за замовчуванням
-            else if (!"uk".equals(lang) && quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(defaultLang)))
-                quizCard = findQuizCardByLang(quiz, defaultLang, quizCardOriginal);
-                // Якщо немає перекладу на мову за замовчуванням або вказана в параметрах мова є мовою оригіналу
-                // то брати мову оригіналу
+            else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(defaultLang)))
+                quizCard = findQuizCardByLang(quiz, defaultLang, quizCardOriginal); //!"uk".equals(lang) &&
+                // Якщо немає перекладу і на мову за замовчуванням - брати мову оригіналу
             else quizCard = quizCardOriginal;
 
             quizzes.add(quizCard);
@@ -309,6 +399,27 @@ public class QuizService {
                 original.type(),
                 original.creator(),
                 original.pseudoId(),
-                quizTranslation.getLanguage());
+                quizTranslation.getLanguage(),
+                original.languages(),
+                original.isRoughDraft());
+    }
+
+    public static String[] getLanguages(Quiz quiz) {
+        String[] languages;
+        if (quiz.getTranslations() != null) {
+            languages = new String[quiz.getTranslations().size() + 1];
+            languages[0] = quiz.getLanguage();
+            for (int i = 0; i < quiz.getTranslations().size(); i++) {
+                languages[i + 1] = quiz.getTranslations().get(i).getLanguage();
+            }
+        } else languages = new String[]{quiz.getLanguage()};
+        return languages;
+    }
+
+    private UserDto getUser(String authHeader) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+            throw new NonAuthorizedException("Ви не авторизовані");
+        return Objects.requireNonNull(responseEntity.getBody());
     }
 }

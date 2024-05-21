@@ -190,9 +190,8 @@ public class QuizResultsService {
         return quizResults;
     }
 
-    public void deleteQuizResultsByQuizId(int pseudoId) {
-        Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
-        quizResultsRepository.deleteQuizResultsByQuiz_Id(quiz.getId());
+    public void deleteQuizResultsByQuizId(ObjectId quizId) {
+        quizResultsRepository.deleteQuizResultsByQuiz_Id(quizId);
     }
 
     public void addNewQuizResult(String authHeader, QuizResult quizResult, int quizPseudoId) {

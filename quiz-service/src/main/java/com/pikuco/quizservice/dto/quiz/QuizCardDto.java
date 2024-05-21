@@ -8,6 +8,8 @@ public record QuizCardDto(
         String type,
         CreatorDto creator,
         int pseudoId,
-        String language
+        String language,
+        String[] languages,
+        boolean isRoughDraft
 ) {
 }
