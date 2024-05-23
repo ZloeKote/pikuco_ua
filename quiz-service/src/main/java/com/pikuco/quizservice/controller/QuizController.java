@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -54,16 +53,31 @@ public class QuizController {
     }
 
     @GetMapping("/user")
-    public ResponseEntity<QuizListDto> showQuizzesByParticipantId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                                                  @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
-                                                                  @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
-                                                                  @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
+    public ResponseEntity<QuizListDto> showQuizzesByParticipantId(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.NEWEST;
 
         QuizListDto quizzes = quizService.getQuizzesByParticipantId(authHeader, sortType, lang, pageNo, Const.PAGE_SIZE_USER_COMPLETED_QUIZZES);
+        return ResponseEntity.ok(quizzes);
+    }
+
+    @GetMapping("/user/wishlist")
+    public ResponseEntity<QuizListDto> showWishlistedQuizzesByUserId(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
+            @RequestParam(defaultValue = "4", name = "pageSize", required = false) int pageSize
+    ) {
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+
+        QuizListDto quizzes = quizService.getWishlistedQuizzesByUserId(authHeader, lang, pageNo, pageSize);
         return ResponseEntity.ok(quizzes);
     }
 

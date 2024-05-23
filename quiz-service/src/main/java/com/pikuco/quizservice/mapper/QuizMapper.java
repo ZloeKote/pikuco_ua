@@ -19,6 +19,7 @@ public class QuizMapper {
                 quiz.getUpdatedAt(),
                 CreatorMapper.mapToCreatorDto(quiz.getCreator()),
                 quiz.getQuestions(),
+                quiz.getNumQuestions(),
                 quiz.getPseudoId(),
                 quiz.isRoughDraft(),
                 quiz.getLanguage(),
@@ -40,6 +41,7 @@ public class QuizMapper {
                         quiz.getCreatedAt(),
                         quiz.getUpdatedAt(),
                         quiz.getCreator(),
+                        quiz.getNumQuestions(),
                         quiz.getPseudoId(),
                         quiz.isRoughDraft(),
                         quiz.getLanguage(),
@@ -54,6 +56,7 @@ public class QuizMapper {
                     quiz.getCreatedAt(),
                     quiz.getUpdatedAt(),
                     quiz.getCreator(),
+                    quiz.getNumQuestions(),
                     quiz.getPseudoId(),
                     quiz.isRoughDraft(),
                     quiz.getLanguage(),
@@ -83,6 +86,7 @@ public class QuizMapper {
                 .createdAt(quizDto.createdAt())
                 .updatedAt(quizDto.updatedAt())
                 .questions(quizDto.questions())
+                .numQuestions(quizDto.numQuestions())
                 .pseudoId(quizDto.pseudoId())
                 .isRoughDraft(quizDto.isRoughDraft())
                 .language(quizDto.language())

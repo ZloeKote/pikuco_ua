@@ -2,15 +2,14 @@ package com.pikuco.quizservice.service;
 
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
+import com.pikuco.quizservice.api.WishlistAPIClient;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.dto.quiz.QuizCardDto;
-import com.pikuco.quizservice.dto.quiz.QuizDto;
 import com.pikuco.quizservice.dto.quiz.QuizListDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.exception.ObjectNotFoundException;
 import com.pikuco.quizservice.exception.ObjectNotValidException;
-import com.pikuco.quizservice.mapper.CreatorMapper;
 import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.repository.QuizRepository;
 import feign.FeignException;
@@ -41,8 +40,10 @@ public class QuizService {
     private final QuizRepository quizRepository;
     private final MongoTemplate mongoTemplate;
     private final ApplicationContext context;
-    private final UserAPIClient userAPIClient;
     private final EvaluationAPIClient evaluationAPIClient;
+    private final UserAPIClient userAPIClient;
+    private final WishlistAPIClient wishlistAPIClient;
+
 
     public List<Quiz> getQuizzes(int pageNo, int pageSize) {
         Pageable pageable = PageRequest.of(pageNo - 1, pageSize);
@@ -139,6 +140,36 @@ public class QuizService {
         }
     }
 
+    public QuizListDto getWishlistedQuizzesByUserId(String authHeader, String lang, int pageNo, int pageSize) {
+        ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
+        Long userId = Objects.requireNonNull(responseEntity.getBody()).id();
+
+        ResponseEntity<List<String>> responseEntityQuizzes =
+                wishlistAPIClient.getWishlistedQuizzesIdsByUserId(userId, pageNo, pageSize);
+        List<String> quizzesIds = responseEntityQuizzes.getBody();
+
+        assert quizzesIds != null;
+        List<ObjectId> quizzesObjectIds = new ArrayList<>(quizzesIds.size());
+        for (String quizId : quizzesIds)
+            quizzesObjectIds.add(new ObjectId(quizId));
+
+        List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizzesObjectIds);
+        Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
+        List<Quiz> quizzes = quizzesObjectIds.stream().map(quizMap::get).toList();
+
+        List<QuizCardDto> quizCards = mapQuizListToQuizCardDtoList(lang, "uk", quizzes);
+        ResponseEntity<Integer> responseEntityNumQuizzes = wishlistAPIClient.getNumWishlistedQuizzesByUserId(userId);
+        int numPages;
+        try {
+            int numQuizzes = Objects.requireNonNull(responseEntityNumQuizzes.getBody());
+            numPages = (int) Math.ceil((numQuizzes / (double) pageSize));
+        } catch (NullPointerException ex) {
+            numPages = 0;
+        }
+
+        return new QuizListDto(quizCards, numPages);
+    }
+
     public int addQuiz(String authHeader, Quiz quiz) {
         ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
         if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
@@ -200,12 +231,17 @@ public class QuizService {
         Quiz quizToDelete = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
                 new ObjectNotFoundException(new HashSet<>(List.of("Турнір не знайдено"))));
         if (Objects.equals(quizToDelete.getCreator().getCreator_id(), creatorId)) {
+            // delete all evaluations of quiz
+            evaluationAPIClient.deleteAllEvaluationsByQuizId(quizToDelete.getId().toString());
+            // delete quiz from all wishlists
+            wishlistAPIClient.deleteQuizWishlistsByQuizId(quizToDelete.getId().toString());
+            // delete quiz results
             QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
             quizResultsService.deleteQuizResultsByQuizId(quizToDelete.getId());
+            // delete quiz
             quizRepository.deleteById(quizToDelete.getId());
-            return;
         }
-        throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
+        else throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
     }
 
     public void addQuizTranslation(String authHeader, int pseudoId, QuizTranslation quizTranslation) {
@@ -287,6 +323,8 @@ public class QuizService {
         }
 
         // validate questions
+        if (!quiz.isRoughDraft() && quiz.getNumQuestions() != quiz.getQuestions().size())
+            throw new ObjectNotValidException(new HashSet<>(List.of("Кількість питань не відповідає заявленій")));
         validateQuestions(quiz.getQuestions(), quiz.isRoughDraft(), quiz.getType(), quiz.getQuestions().size());
     }
 
@@ -322,8 +360,8 @@ public class QuizService {
         }
 
         // validate questions
-        if (quiz.getQuestions().size() != quizTranslation.getQuestions().size()) {
-            throw new ObjectNotValidException(new HashSet<>(List.of("Кількість питань переводу не відповідає кількості питань вікторини!")));
+        if (quiz.getNumQuestions() != quizTranslation.getQuestions().size()) {
+            throw new ObjectNotValidException(new HashSet<>(List.of("Кількість питань перекладу не відповідає кількості питань вікторини!")));
         }
         validateQuestions(quizTranslation.getQuestions(), false, quiz.getType(), quizTranslation.getQuestions().size());
     }
@@ -368,6 +406,7 @@ public class QuizService {
     private @NotNull List<QuizCardDto> mapQuizListToQuizCardDtoList(String lang, String defaultLang, List<Quiz> results) {
         List<QuizCardDto> quizzes = new ArrayList<>(results.size());
         for (Quiz quiz : results) {
+            if (quiz == null) continue;
             QuizCardDto quizCard;
             QuizCardDto quizCardOriginal = QuizMapper.mapToQuizCardDto(quiz);
             if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;

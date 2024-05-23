@@ -15,6 +15,7 @@ public record QuizDto(
         LocalDateTime updatedAt,
         CreatorDto creator,
         List<Question> questions,
+        int numQuestions,
         int pseudoId,
         boolean isRoughDraft,
         String language,

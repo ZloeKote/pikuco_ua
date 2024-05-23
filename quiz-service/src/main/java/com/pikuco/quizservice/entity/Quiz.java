@@ -35,6 +35,8 @@ public class Quiz {
     private Creator creator;
     @Field(name = "questions")
     private List<Question> questions;
+    @Field(name = "numQuestions")
+    private int numQuestions;
     @Field(name = "pseudoId")
     private int pseudoId;
     @Field(name = "isRoughDraft")

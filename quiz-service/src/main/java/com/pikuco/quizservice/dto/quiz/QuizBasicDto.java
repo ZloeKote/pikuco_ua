@@ -12,6 +12,7 @@ public record QuizBasicDto(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         Creator creator,
+        int numQuestions,
         int pseudoId,
         boolean isRoughDraft,
         String language,
