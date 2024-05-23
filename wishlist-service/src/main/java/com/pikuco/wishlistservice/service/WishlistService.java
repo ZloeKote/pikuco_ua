@@ -5,8 +5,11 @@ import com.pikuco.wishlistservice.exception.NonAuthorizedException;
 import com.pikuco.wishlistservice.repository.WishlistRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.util.Pair;
@@ -14,9 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -55,11 +56,50 @@ public class WishlistService {
         return mongoTemplate.exists(query, Wishlist.class);
     }
 
+    public void deleteQuizWishlistsByQuizId(String quizId) {
+        Query matchQuery = new Query(Criteria.where("type").is("quiz")
+                .and("wishlisted_id").is(quizId));
+
+        mongoTemplate.findAllAndRemove(matchQuery, "wishlist");
+    }
+
+    public List<String> getWishlistedQuizzesIdByUserId(Long userId, int pageNo, int pageSize) {
+        MatchOperation matchOperation = Aggregation.match(new Criteria().andOperator(
+                Criteria.where("type").is("quiz"),
+                Criteria.where("user_id").is(userId)));
+        SortOperation sortOperation = Aggregation.sort(Sort.Direction.DESC, "wishlistedAt");
+        SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
+        LimitOperation limitOperation = Aggregation.limit(pageSize);
+
+        Aggregation aggregation = Aggregation.newAggregation(matchOperation, sortOperation, skipOperation, limitOperation);
+        AggregationResults<Wishlist> aggregationResults = mongoTemplate.aggregate(aggregation, "wishlist", Wishlist.class);
+
+        List<String> quizzesIds = new LinkedList<>();
+        for (Wishlist wishlist : aggregationResults.getMappedResults()) {
+            quizzesIds.add(wishlist.getWishlistedId());
+        }
+        return quizzesIds;
+    }
+
+    public int getNumWishlistedQuizzesByUserId(Long userId) {
+        MatchOperation matchOperation = Aggregation.match(new Criteria().andOperator(
+                Criteria.where("type").is("quiz"),
+                Criteria.where("user_id").is(userId)));
+        CountOperation countOperation = Aggregation.count().as("quantity");
+
+        Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
+        HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregation, "wishlist", HashMap.class)
+                .getUniqueMappedResult();
+
+        assert resultsCountMap != null;
+        return resultsCountMap.get("quantity");
+    }
+
     private Wishlist getReadyWishlist(String authHeader, int pseudoId) {
         String quizId = quizAPI.showQuizIdByPseudoId(pseudoId).getBody();
 
         if (quizId == null) {
-            throw new NonAuthorizedException("Ви не авторизовані");
+            throw new NoSuchElementException("Такої вікторини не існує");
         }
 
         ResponseEntity<Long> userResponse;
@@ -73,10 +113,8 @@ public class WishlistService {
             wishlist.setWishlistedAt(LocalDateTime.now());
 
             return wishlist;
-        } catch (FeignException e) {
+        } catch (FeignException | NullPointerException e) {
             throw new NonAuthorizedException("Ви не авторизовані");
-        } catch (NullPointerException e) {
-            throw new NoSuchElementException("Такої вікторини не існує");
         }
     }
 }
