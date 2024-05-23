@@ -1,12 +1,6 @@
 package com.pikuco.apigateway.configuration;
 
-import jakarta.ws.rs.core.HttpHeaders;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
 
 //@Configuration
 public class CORSConfiguration implements WebFluxConfigurer {

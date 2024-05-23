@@ -1,14 +1,11 @@
 package com.pikuco.userservice.controller;
 
 import com.pikuco.userservice.dto.*;
-import com.pikuco.userservice.exception.ObjectNotValidException;
 import com.pikuco.userservice.mapper.UserMapper;
 import com.pikuco.userservice.service.UserService;
 import com.pikuco.userservice.validator.ObjectsValidator;
 import com.pikuco.userservice.validator.PasswordToValidate;
-import jakarta.ws.rs.NotFoundException;
 import lombok.AllArgsConstructor;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

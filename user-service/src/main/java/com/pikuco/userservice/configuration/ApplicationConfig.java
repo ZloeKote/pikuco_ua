@@ -1,6 +1,5 @@
 package com.pikuco.userservice.configuration;
 
-import com.pikuco.userservice.repository.UserRepository;
 import com.pikuco.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

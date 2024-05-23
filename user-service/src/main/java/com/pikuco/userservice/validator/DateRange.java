@@ -2,7 +2,6 @@ package com.pikuco.userservice.validator;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 
 import java.lang.annotation.ElementType;

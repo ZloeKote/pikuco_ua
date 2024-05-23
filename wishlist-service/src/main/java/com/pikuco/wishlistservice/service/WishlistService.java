@@ -5,7 +5,6 @@ import com.pikuco.wishlistservice.exception.NonAuthorizedException;
 import com.pikuco.wishlistservice.repository.WishlistRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import org.bson.types.ObjectId;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;

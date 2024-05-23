@@ -5,7 +5,6 @@ import com.pikuco.wishlistservice.dto.WishlistDto;
 import com.pikuco.wishlistservice.mapper.WishlistMapper;
 import com.pikuco.wishlistservice.service.WishlistService;
 import lombok.AllArgsConstructor;
-import org.bson.types.ObjectId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

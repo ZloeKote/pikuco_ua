@@ -6,11 +6,7 @@ import com.pikuco.userservice.entity.User;
 import com.pikuco.userservice.exception.ObjectNotValidException;
 import com.pikuco.userservice.repository.TokenRepository;
 import com.pikuco.userservice.repository.UserRepository;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
