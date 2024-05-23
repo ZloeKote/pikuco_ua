@@ -1,4 +1,4 @@
-package com.pikuco.evaluationservice.cotroller;
+package com.pikuco.evaluationservice.controller;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

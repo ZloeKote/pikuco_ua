@@ -1,4 +1,4 @@
-package com.pikuco.evaluationservice.cotroller;
+package com.pikuco.evaluationservice.controller;
 
 import com.pikuco.evaluationservice.dto.EvaluationDto;
 import com.pikuco.evaluationservice.service.EvaluationService;
@@ -19,7 +19,7 @@ public class EvaluationController {
         return ResponseEntity.ok(evaluation);
     }
 
-    @PostMapping("/quizzes/{pseudoId}")
+    @PostMapping("/quizzes/{pseudoId}/user")
     public ResponseEntity<?> addEvaluation(@RequestHeader(required = true, value = "Authorization") String authHeader,
                                            @PathVariable int pseudoId,
                                            @RequestBody AddEvaluationRequest isLiked) {
@@ -27,10 +27,16 @@ public class EvaluationController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/quizzes/{pseudoId}")
+    @DeleteMapping("/quizzes/{pseudoId}/user")
     public ResponseEntity<?> deleteEvaluation(@RequestHeader(required = true, value = "Authorization") String authHeader,
                                               @PathVariable int pseudoId) {
         evaluationService.deleteEvaluation(authHeader, pseudoId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/quizzes/{quizId}")
+    public ResponseEntity<?> deleteAllEvaluationsByQuizId(@PathVariable String quizId) {
+        evaluationService.deleteQuizEvaluationsByQuizId(quizId);
         return ResponseEntity.ok().build();
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -115,6 +116,7 @@ public class EvaluationService {
         evaluation.setEvaluationObjectId(quizAndUserId.getSecond());
         evaluation.setType("quiz");
         evaluation.setLiked(isLiked);
+        evaluation.setEvaluatedAt(LocalDateTime.now());
 
         Query query = new Query(Criteria.where("user_id").is(quizAndUserId.getFirst())
                 .and("evaluation_object_id").is(quizAndUserId.getSecond())
@@ -128,6 +130,12 @@ public class EvaluationService {
                 .and("evaluation_object_id").is(quizAndUserId.getSecond())
                 .and("type").is("quiz"));
         mongoTemplate.remove(query, "evaluation");
+    }
+
+    public void deleteQuizEvaluationsByQuizId(String quizId) {
+        Query matchQuery = new Query(Criteria.where("type").is("quiz")
+                .and("evaluation_object_id").is(quizId));
+        mongoTemplate.findAllAndRemove(matchQuery, "evaluation");
     }
 
     private Pair<Long, String> getUserAndQuizId(String authHeader, int pseudoId) {
@@ -144,6 +152,5 @@ public class EvaluationService {
         } catch (FeignException | NullPointerException e) {
             throw new NonAuthorizedException("Ви не авторизовані");
         }
-
     }
 }
