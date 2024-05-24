@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import javax.print.Doc;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -268,5 +269,20 @@ public class QuizResultsService {
 
         assert resultsCountMap != null;
         return resultsCountMap.get("quantity");
+    }
+
+    public List<ObjectId> getPopularQuizzes(int pageNo, int pageSize) {
+        ProjectionOperation countResults = Aggregation.project().and("results").size().as("count")
+                .and("quiz").as("quiz");
+        SortOperation sortByCount = Aggregation.sort(Sort.Direction.DESC, "count");
+        SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
+        LimitOperation limitOperation = Aggregation.limit(pageSize);
+        Aggregation aggregation = Aggregation.newAggregation(countResults, sortByCount, skipOperation, limitOperation);
+        AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "quizResults", Document.class);
+        List<ObjectId> quizzesIds = new LinkedList<>();
+        for(Document quizResult : results.getMappedResults()) {
+            quizzesIds.add((ObjectId) quizResult.get("quiz", DBRef.class).getId());
+        }
+        return quizzesIds;
     }
 }

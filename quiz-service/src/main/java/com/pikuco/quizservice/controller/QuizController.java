@@ -38,17 +38,27 @@ public class QuizController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<QuizListDto> showFilterSortQuizzes(@RequestParam(name = "title", required = false) String title,
-                                                             @RequestParam(name = "type", required = false) String type,
-                                                             @RequestParam(name = "showRoughDraft", defaultValue = "false", required = false) String showRoughDraft,
-                                                             @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
-                                                             @RequestParam(name = "creatorNickname", required = false) String creatorNickname,
-                                                             @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
-                                                             @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
-                                                             @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
-                                                             @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
+    public ResponseEntity<QuizListDto> showFilterSortQuizzes(
+            @RequestParam(name = "title", required = false) String title,
+            @RequestParam(name = "type", required = false) String type,
+            @RequestParam(name = "showRoughDraft", defaultValue = "false", required = false) String showRoughDraft,
+            @RequestParam(defaultValue = "0", name = "numberQuestions", required = false) int numberQuestions,
+            @RequestParam(name = "creatorNickname", required = false) String creatorNickname,
+            @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
+            @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
         QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorNickname, sortType, lang, pageNo, pageSize);
+        return ResponseEntity.ok(quizzes);
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<QuizListDto> showPopularQuizzes(
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
+            @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
+        QuizListDto quizzes = quizService.getPopularQuizzes(lang, pageNo, pageSize);
         return ResponseEntity.ok(quizzes);
     }
 
@@ -61,9 +71,11 @@ public class QuizController {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
-        SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.NEWEST;
+        SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ?
+                SortQuizResultsType.checkType(sort) : SortQuizResultsType.NEWEST;
 
-        QuizListDto quizzes = quizService.getQuizzesByParticipantId(authHeader, sortType, lang, pageNo, Const.PAGE_SIZE_USER_COMPLETED_QUIZZES);
+        QuizListDto quizzes = quizService
+                .getQuizzesByParticipantId(authHeader, sortType, lang, pageNo, Const.PAGE_SIZE_USER_COMPLETED_QUIZZES);
         return ResponseEntity.ok(quizzes);
     }
 
@@ -82,8 +94,9 @@ public class QuizController {
     }
 
     @PostMapping
-    public ResponseEntity<Integer> addQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                           @RequestBody QuizDto quizDto) {
+    public ResponseEntity<Integer> addQuiz(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestBody QuizDto quizDto) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
@@ -92,9 +105,10 @@ public class QuizController {
     }
 
     @PutMapping("/{pseudoId}")
-    public ResponseEntity<?> updateQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                        @PathVariable int pseudoId,
-                                        @RequestBody QuizDto quizDto) {
+    public ResponseEntity<?> updateQuiz(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @PathVariable int pseudoId,
+            @RequestBody QuizDto quizDto) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
         if (pseudoId != quizDto.pseudoId())
@@ -104,8 +118,9 @@ public class QuizController {
     }
 
     @DeleteMapping("/{pseudoId}")
-    public ResponseEntity<?> deleteQuiz(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                        @PathVariable int pseudoId) {
+    public ResponseEntity<?> deleteQuiz(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @PathVariable int pseudoId) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
         quizService.deleteQuiz(authHeader, pseudoId);
@@ -113,9 +128,10 @@ public class QuizController {
     }
 
     @PutMapping("/{pseudoId}/translations")
-    public ResponseEntity<?> addQuizTranslation(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                                @PathVariable int pseudoId,
-                                                @RequestBody QuizTranslationDto quizTranslation) {
+    public ResponseEntity<?> addQuizTranslation(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @PathVariable int pseudoId,
+            @RequestBody QuizTranslationDto quizTranslation) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
         quizService.addQuizTranslation(authHeader, pseudoId, QuizMapper.mapToQuizTranslation(quizTranslation));
@@ -123,13 +139,15 @@ public class QuizController {
     }
 
     @PutMapping("/{pseudoId}/translations/{language}")
-    public ResponseEntity<?> editQuizTranslation(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                                 @PathVariable int pseudoId,
-                                                 @PathVariable String language,
-                                                 @RequestBody QuizTranslationDto quizTranslation) {
+    public ResponseEntity<?> editQuizTranslation(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @PathVariable int pseudoId,
+            @PathVariable String language,
+            @RequestBody QuizTranslationDto quizTranslation) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
-        quizService.editQuizTranslation(authHeader, pseudoId, QuizMapper.mapToQuizTranslation(quizTranslation), language);
+        quizService
+                .editQuizTranslation(authHeader, pseudoId, QuizMapper.mapToQuizTranslation(quizTranslation), language);
         return ResponseEntity.ok().build();
     }
 

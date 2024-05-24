@@ -1,6 +1,7 @@
 package com.pikuco.quizservice.entity;
 
 public enum SortType {
+    POPULAR,
     HIGHEST_RATED,
     NEWEST;
 

@@ -113,6 +113,17 @@ public class QuizService {
         return new QuizListDto(quizzes, numPages);
     }
 
+    public QuizListDto getPopularQuizzes(String lang, int pageNo, int pageSize) {
+        QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
+        List<ObjectId> quizzesIds = quizResultsService.getPopularQuizzes(pageNo, pageSize);
+        List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizzesIds);
+        Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
+
+        List<Quiz> quizzes = quizzesIds.stream().map(quizMap::get).toList();
+        List<QuizCardDto> quizCards = mapQuizListToQuizCardDtoList(lang, "uk", quizzes);
+        return new QuizListDto(quizCards, 1);
+    }
+
     public QuizListDto getQuizzesByParticipantId(String authHeader, SortQuizResultsType sort, String lang, int PageNo, int pageSize) {
         try {
             ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
@@ -369,7 +380,7 @@ public class QuizService {
     private void validateQuestions(List<Question> questions, boolean isRoughDraft, Type type, int numQuestions) {
         String regex;
         if (type == Type.TOURNAMENT_VIDEO)
-            regex = "((https?:)?//)?((www|m)\\.)?(youtube\\.com|youtu\\.be)(/([\\w\\-]+[?]v=|embed/|v/)?)([_\\w\\-]{11})([?|&]\\S+)?"; // youtube url
+            regex = ".*(youtu\\.be\\/|v\\/|u\\/\\w\\/|embed\\/|watch\\?v=|\\&v=)([^#\\&\\?]*).*"; //"((https?:)?//)?((www|m)\\.)?(youtube\\.com|youtu\\.be)(/([\\w\\-]+[?]v=|embed/|v/)?)([_\\w\\-]{11})([?|&]\\S+)?"; // youtube url
         else
             regex = "[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)"; // any url
 
