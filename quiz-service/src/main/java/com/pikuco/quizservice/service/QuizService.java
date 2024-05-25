@@ -371,7 +371,7 @@ public class QuizService {
         }
 
         // validate questions
-        if (quiz.getNumQuestions() != quizTranslation.getQuestions().size()) {
+        if (quiz.getQuestions().size() != quizTranslation.getQuestions().size()) {
             throw new ObjectNotValidException(new HashSet<>(List.of("Кількість питань перекладу не відповідає кількості питань вікторини!")));
         }
         validateQuestions(quizTranslation.getQuestions(), false, quiz.getType(), quizTranslation.getQuestions().size());

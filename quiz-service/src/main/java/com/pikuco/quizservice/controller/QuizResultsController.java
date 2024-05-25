@@ -33,7 +33,7 @@ public class QuizResultsController {
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
 
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.PLACE_ASC;
-        QuizResultsDto quizResults = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getIndividualQuizResults(authHeader, pseudoId, sortType));
+        QuizResultsDto quizResults = quizResultsService.getIndividualQuizResults(authHeader, pseudoId, sortType);
         return ResponseEntity.ok(quizResults);
     }
 
