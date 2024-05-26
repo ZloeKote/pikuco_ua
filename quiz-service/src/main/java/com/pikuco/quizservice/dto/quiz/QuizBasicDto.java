@@ -14,6 +14,7 @@ public record QuizBasicDto(
         Creator creator,
         int numQuestions,
         int pseudoId,
+        String cover,
         boolean isRoughDraft,
         String language,
         String[] languages,

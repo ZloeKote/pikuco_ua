@@ -22,6 +22,7 @@ public class QuizMapper {
                 quiz.getNumQuestions(),
                 quiz.getPseudoId(),
                 quiz.isRoughDraft(),
+                quiz.getCover(),
                 quiz.getLanguage(),
                 QuizService.getLanguages(quiz),
                 quiz.getTranslations());
@@ -43,6 +44,7 @@ public class QuizMapper {
                         quiz.getCreator(),
                         quiz.getNumQuestions(),
                         quiz.getPseudoId(),
+                        quiz.getCover(),
                         quiz.isRoughDraft(),
                         quiz.getLanguage(),
                         QuizService.getLanguages(quiz),
@@ -58,6 +60,7 @@ public class QuizMapper {
                     quiz.getCreator(),
                     quiz.getNumQuestions(),
                     quiz.getPseudoId(),
+                    quiz.getCover(),
                     quiz.isRoughDraft(),
                     quiz.getLanguage(),
                     QuizService.getLanguages(quiz),
@@ -75,7 +78,8 @@ public class QuizMapper {
                 quiz.getPseudoId(),
                 quiz.getLanguage(),
                 QuizService.getLanguages(quiz),
-                quiz.isRoughDraft());
+                quiz.isRoughDraft(),
+                quiz.getCover());
     }
 
     public static Quiz mapToQuiz(QuizDto quizDto) {
@@ -87,6 +91,7 @@ public class QuizMapper {
                 .updatedAt(quizDto.updatedAt())
                 .questions(quizDto.questions())
                 .numQuestions(quizDto.numQuestions())
+                .cover(quizDto.cover())
                 .pseudoId(quizDto.pseudoId())
                 .isRoughDraft(quizDto.isRoughDraft())
                 .language(quizDto.language())

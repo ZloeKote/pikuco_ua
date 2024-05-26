@@ -3,6 +3,8 @@ package com.pikuco.quizservice.service;
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
 import com.pikuco.quizservice.api.WishlistAPIClient;
+import com.pikuco.quizservice.dto.QuizzesRequest;
+import com.pikuco.quizservice.dto.QuizzesResponse;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.dto.quiz.QuizCardDto;
 import com.pikuco.quizservice.dto.quiz.QuizListDto;
@@ -81,33 +83,58 @@ public class QuizService {
 
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
         LimitOperation limitOperation = Aggregation.limit(pageSize);
-        SortOperation sortOperation = null;
-        switch (sort) {
-            case HIGHEST_RATED -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.ASC, ""));
-            case NEWEST -> sortOperation = Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt"));
-        }
+        SortOperation sortOperation;
         MatchOperation matchOperation;
         CountOperation countOperation = Aggregation.count().as("quantity");
         Aggregation aggregation;
         Aggregation aggregationCount;
-        if (!criteriaList.isEmpty()) {
-            matchOperation = Aggregation.match(new Criteria().andOperator(criteriaList));
-            aggregation = Aggregation.newAggregation(matchOperation, sortOperation, skipOperation, limitOperation);
-            aggregationCount = Aggregation.newAggregation(matchOperation, countOperation);
-        } else {
-            aggregation = Aggregation.newAggregation(sortOperation, skipOperation, limitOperation);
-            aggregationCount = Aggregation.newAggregation(countOperation);
-        }
-        AggregationResults<Quiz> results = mongoTemplate.aggregate(aggregation, "quiz", Quiz.class);
-        HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregationCount, "quiz", HashMap.class)
-                .getUniqueMappedResult();
 
-        List<QuizCardDto> quizzes = mapQuizListToQuizCardDtoList(lang, "uk", results.getMappedResults());
-        int numPages;
-        try {
-            numPages = (int) Math.ceil((resultsCountMap.get("quantity") / (double) pageSize));
-        } catch (NullPointerException ex) {
-            numPages = 0;
+        List<QuizCardDto> quizzes = new ArrayList<>();
+        int numPages = 1;
+        if (sort.name().equals(SortType.HIGHEST_RATED.name())) {
+            List<String> quizzesIds = new LinkedList<>();
+            if (!criteriaList.isEmpty()) {
+                matchOperation = Aggregation.match(new Criteria().andOperator(criteriaList));
+                aggregation = Aggregation.newAggregation(matchOperation);
+                List<Quiz> results = mongoTemplate.aggregate(aggregation, "quiz", Quiz.class).getMappedResults();
+                for (Quiz quiz : results)
+                    quizzesIds.add(quiz.getId().toString());
+            }
+            ResponseEntity<Map<String, Object>> bestQuizzesResponse = evaluationAPIClient
+                    .showBestQuizzesIds(quizzesIds, pageNo, pageSize);
+            List<String> bestQuizzesIdsString = (List<String>) Objects.requireNonNull(bestQuizzesResponse.getBody()).get("quizzesIds");
+            numPages = (int) bestQuizzesResponse.getBody().get("numPages");
+
+            List<ObjectId> bestQuizzesIds = new LinkedList<>();
+            assert bestQuizzesIdsString != null;
+            for (String id : bestQuizzesIdsString)
+                bestQuizzesIds.add(new ObjectId(id));
+
+            List<Quiz> unsortedBestQuizzes = quizRepository.findAllByIdIn(bestQuizzesIds);
+            Map<ObjectId, Quiz> quizMap = unsortedBestQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
+            List<Quiz> bestQuizzes = bestQuizzesIds.stream().map(quizMap::get).toList();
+
+            quizzes = mapQuizListToQuizCardDtoList(lang, "uk", bestQuizzes);
+        } else if (sort.name().equals(SortType.NEWEST.name())) {
+            sortOperation = Aggregation.sort(Sort.by(Sort.Direction.DESC, "createdAt"));
+            if (criteriaList.isEmpty()) {
+                aggregation = Aggregation.newAggregation(sortOperation, skipOperation, limitOperation);
+                aggregationCount = Aggregation.newAggregation(countOperation);
+            } else {
+                matchOperation = Aggregation.match(new Criteria().andOperator(criteriaList));
+                aggregation = Aggregation.newAggregation(matchOperation, sortOperation, skipOperation, limitOperation);
+                aggregationCount = Aggregation.newAggregation(matchOperation, countOperation);
+            }
+            AggregationResults<Quiz> results = mongoTemplate.aggregate(aggregation, "quiz", Quiz.class);
+            HashMap<String, Integer> resultsCountMap = mongoTemplate.aggregate(aggregationCount, "quiz", HashMap.class)
+                    .getUniqueMappedResult();
+
+            quizzes = mapQuizListToQuizCardDtoList(lang, "uk", results.getMappedResults());
+            try {
+                numPages = (int) Math.ceil((resultsCountMap.get("quantity") / (double) pageSize));
+            } catch (NullPointerException ex) {
+                numPages = 0;
+            }
         }
 
         return new QuizListDto(quizzes, numPages);
@@ -251,8 +278,7 @@ public class QuizService {
             quizResultsService.deleteQuizResultsByQuizId(quizToDelete.getId());
             // delete quiz
             quizRepository.deleteById(quizToDelete.getId());
-        }
-        else throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
+        } else throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
     }
 
     public void addQuizTranslation(String authHeader, int pseudoId, QuizTranslation quizTranslation) {
@@ -451,7 +477,8 @@ public class QuizService {
                 original.pseudoId(),
                 quizTranslation.getLanguage(),
                 original.languages(),
-                original.isRoughDraft());
+                original.isRoughDraft(),
+                original.cover());
     }
 
     public static String[] getLanguages(Quiz quiz) {

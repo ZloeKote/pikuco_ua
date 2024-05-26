@@ -18,6 +18,7 @@ public record QuizDto(
         int numQuestions,
         int pseudoId,
         boolean isRoughDraft,
+        String cover,
         String language,
         String[] languages,
         List<QuizTranslation> translations

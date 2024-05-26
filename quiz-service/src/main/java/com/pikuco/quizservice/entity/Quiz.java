@@ -37,6 +37,8 @@ public class Quiz {
     private List<Question> questions;
     @Field(name = "numQuestions")
     private int numQuestions;
+    @Field(name = "cover")
+    private String cover;
     @Field(name = "pseudoId")
     private int pseudoId;
     @Field(name = "isRoughDraft")
