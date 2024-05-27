@@ -4,7 +4,8 @@ import lombok.Builder;
 
 @Builder
 public record QuizResultsDto(
-        QuizResultDto quizResults
+        QuizResultDto quizResults,
+        int numPages
 ) {
 
 }

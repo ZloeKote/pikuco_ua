@@ -35,7 +35,12 @@ public class QuizResultsService {
     @Getter
     private final QuizService quizService;
 
-    public QuizResultsDto getIndividualQuizResults(String authHeader, int pseudoId, SortQuizResultsType sortType) {
+    public QuizResultsDto getIndividualQuizResults(String authHeader,
+                                                   int pseudoId,
+                                                   SortQuizResultsType sortType,
+                                                   String lang,
+                                                   int pageNo,
+                                                   int pageSize) {
         ResponseEntity<UserDto> responseEntity = userAPIClient.showUserByToken(authHeader);
         if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
             throw new NonAuthorizedException("Ви не авторизовані");
@@ -76,51 +81,79 @@ public class QuizResultsService {
                 sortOperation, projectionOperation, groupOperation);
 
         QuizResult results = mongoTemplate.aggregate(aggregation, "quizResults", QuizResult.class).getUniqueMappedResult();
-        QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
+        if (results == null)
+            throw new NoSuchElementException("Такий користувач не має результатів проходження вікторини");
 
         List<QuestionResultDto> questionResultList = new LinkedList<>();
         int index = 0;
-        if (quiz.getTranslations() != null) {
-            for (QuestionResult qr : results.getQuestions()) {
-                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
-                for (QuizTranslation quizTranslation : quiz.getTranslations()) {
-                    Question translatedQuestion = quizTranslation.getQuestions().stream()
-                            .filter((tr) -> tr.getUrl().equals(qr.getUrl())).findFirst()
-                            .orElse(new Question(qr.getTitle(),
-                                    qr.getDescription(),
-                                    qr.getUrl()));
-                    QuestionTranslationDto questionTranslationDto = new QuestionTranslationDto(translatedQuestion.getTitle(),
-                            translatedQuestion.getDescription(), quizTranslation.getLanguage());
-                    questionTranslationDtoList.add(questionTranslationDto);
-                }
-                QuestionResultDto questionResult = new QuestionResultDto(qr.getTitle(),
-                        qr.getDescription(),
-                        qr.getUrl(),
-                        qr.getScore(),
-                        ++index,
-                        quiz.getLanguage(),
-                        questionTranslationDtoList);
-                questionResultList.add(questionResult);
-            }
-        } else {
-            for (QuestionResult qr : results.getQuestions()) {
-                QuestionResultDto questionResult = new QuestionResultDto(qr.getTitle(),
-                        qr.getDescription(),
-                        qr.getUrl(),
-                        qr.getScore(),
-                        ++index,
+//        if (quiz.getTranslations() != null) {
+//            for (QuestionResult qr : results.getQuestions()) {
+//                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
+//                for (QuizTranslation quizTranslation : quiz.getTranslations()) {
+//                    Question translatedQuestion = quizTranslation.getQuestions().stream()
+//                            .filter((tr) -> tr.getUrl().equals(qr.getUrl())).findFirst()
+//                            .orElse(new Question(qr.getTitle(),
+//                                    qr.getDescription(),
+//                                    qr.getUrl()));
+//                    QuestionTranslationDto questionTranslationDto = new QuestionTranslationDto(translatedQuestion.getTitle(),
+//                            translatedQuestion.getDescription(), quizTranslation.getLanguage());
+//                    questionTranslationDtoList.add(questionTranslationDto);
+//                }
+//                QuestionResultDto questionResult = new QuestionResultDto(qr.getTitle(),
+//                        qr.getDescription(),
+//                        qr.getUrl(),
+//                        qr.getScore(),
+//                        ++index,
+//                        quiz.getLanguage(),
+//                        questionTranslationDtoList);
+//                questionResultList.add(questionResult);
+//            }
+//        } else {
+        if (quiz.getTranslations() != null &&
+                quiz.getTranslations().stream().anyMatch(tr -> tr.getLanguage().equals(lang))) {
+            QuizTranslation quizTranslation = quiz.getTranslations().stream()
+                    .filter(tr -> tr.getLanguage().equals(lang)).findFirst().orElseThrow();
+            for (QuestionResult questionResult : results.getQuestions()) {
+                Question question = quizTranslation.getQuestions().stream()
+                        .filter((q) -> q.getUrl().equals(questionResult.getUrl()))
+                        .findFirst()
+                        .orElse(new Question("Missing title", "", questionResult.getUrl()));
+
+                QuestionResultDto questionResultDto = new QuestionResultDto(question.getTitle(),
+                        question.getDescription(),
+                        questionResult.getUrl(),
+                        questionResult.getScore(),
+                        questionResult.getPlace(),
                         quiz.getLanguage(),
                         new ArrayList<>());
-                questionResultList.add(questionResult);
+                questionResultList.add(questionResultDto);
+            }
+
+        } else {
+            for (QuestionResult questionResult : results.getQuestions()) {
+                QuestionResultDto questionResultDto = new QuestionResultDto(questionResult.getTitle(),
+                        questionResult.getDescription(),
+                        questionResult.getUrl(),
+                        questionResult.getScore(),
+                        questionResult.getPlace(),
+                        quiz.getLanguage(),
+                        new ArrayList<>());
+                questionResultList.add(questionResultDto);
             }
         }
+//        }
+        List<QuestionResultDto> finalQuestionResultList = new LinkedList<>();
+        for (int i = (pageNo - 1) * pageSize; i < pageNo * pageSize; i++) {
+            if (i >= questionResultList.size()) break;
+            finalQuestionResultList.add(questionResultList.get(i));
+        }
+        int numPages = questionResultList.size() / pageSize;
 
-        quizResults.getResults().clear();
-        return new QuizResultsDto(new QuizResultDto(questionResultList,
-                0L, LocalDateTime.now()));
+        return new QuizResultsDto(new QuizResultDto(finalQuestionResultList,
+                0L, LocalDateTime.now()), numPages);
     }
 
-    public QuizResultsDto getQuizResultsById(int pseudoId, SortQuizResultsType sortType) {
+    public QuizResultsDto getQuizResultsById(int pseudoId, SortQuizResultsType sortType, String lang, int pageNo, int pageSize) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         int amountQuestions = quiz.getQuestions().size();
         int rounds = ((int) Math.round(Math.pow(amountQuestions, 0.5))) + 1; // + 1 because last round has 2nd and 1st place
@@ -132,7 +165,48 @@ public class QuizResultsService {
         for (int i = 3; i < rounds; i++) {
             points[i] = points[i - 1] + points[i - 2];
         }
-        QuizResults quizResults = quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
+        try {
+            // якщо вікторину ще не проходили
+            quizResultsRepository.findFirstByQuiz_Id(quiz.getId()).orElseThrow();
+        } catch (NoSuchElementException e) {
+            List<QuestionResultDto> questionResultDtoList = new LinkedList<>();
+            if (quiz.getTranslations() != null && quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang))) {
+                QuizTranslation quizTranslation = quiz.getTranslations().stream()
+                        .filter(tr -> tr.getLanguage().equals(lang)).findFirst().orElse(null);
+                if (quizTranslation == null) return null;
+                for (int i = 0; i < quizTranslation.getQuestions().size(); i++) {
+                    questionResultDtoList.add(new QuestionResultDto(
+                            quizTranslation.getQuestions().get(i).getTitle(),
+                            quizTranslation.getQuestions().get(i).getDescription(),
+                            quizTranslation.getQuestions().get(i).getUrl(),
+                            0, i + 1, lang, null));
+                }
+            } else {
+                for (int i = 0; i < quiz.getQuestions().size(); i++) {
+                    questionResultDtoList.add(new QuestionResultDto(
+                            quiz.getQuestions().get(i).getTitle(),
+                            quiz.getQuestions().get(i).getDescription(),
+                            quiz.getQuestions().get(i).getUrl(),
+                            0, i + 1, quiz.getLanguage(), null));
+                }
+            }
+            switch (sortType) {
+                case TITLE_ASC -> {
+                    questionResultDtoList.sort(Comparator.comparing(QuestionResultDto::title));
+                    break;
+                }
+                default -> questionResultDtoList.sort(Comparator.comparingInt(QuestionResultDto::place));
+            }
+
+            List<QuestionResultDto> finalQuestionResultList = new LinkedList<>();
+            for (int i = (pageNo - 1) * pageSize; i < pageNo * pageSize; i++) {
+                if (i >= questionResultDtoList.size()) break;
+                finalQuestionResultList.add(questionResultDtoList.get(i));
+            }
+            int numPages = questionResultDtoList.size() / pageSize;
+            return new QuizResultsDto(new QuizResultDto(
+                    finalQuestionResultList, 0L, LocalDateTime.now()), numPages);
+        }
 
         // find results by quiz id
         MatchOperation matchOperation = Aggregation.match(Criteria.where("quiz.$id").is(quiz.getId()));
@@ -174,32 +248,45 @@ public class QuizResultsService {
 
         List<QuestionResultDto> questionResultList = new LinkedList<>();
         int index = 0;
-        if (quiz.getTranslations() != null) {
+//        if (quiz.getTranslations() != null) {
+//            for (Document doc : results.getMappedResults()) {
+//                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
+//                for (QuizTranslation quizTranslation : quiz.getTranslations()) {
+//                    Question translatedQuestion = quizTranslation.getQuestions().stream()
+//                            .filter((tr) -> tr.getUrl().equals(doc.getString("_id"))).findFirst()
+//                            .orElse(new Question(doc.getString("title"),
+//                                    doc.getString("description"),
+//                                    doc.getString("_id")));
+//                    QuestionTranslationDto questionTranslationDto = new QuestionTranslationDto(translatedQuestion.getTitle(),
+//                            translatedQuestion.getDescription(), quizTranslation.getLanguage());
+//                    questionTranslationDtoList.add(questionTranslationDto);
+//                }
+//                Question question = quiz.getQuestions().stream()
+//                        .filter((q) -> q.getUrl().equals(doc.getString("_id")))
+//                        .findFirst()
+//                        .orElse(new Question("Missing title", "", doc.getString("_id")));
+//                QuestionResultDto questionResult = new QuestionResultDto(question.getTitle(),
+//                        question.getDescription(),
+//                        doc.getString("_id"),
+//                        doc.getInteger("totalScore"),
+//                        ++index,
+//                        quiz.getLanguage(),
+//                        questionTranslationDtoList);
+//                questionResultList.add(questionResult);
+//            }
+//        } else {
+        if (quiz.getTranslations() != null &&
+                quiz.getTranslations().stream().anyMatch(tr -> tr.getLanguage().equals(lang))) {
+            QuizTranslation quizTranslation = quiz.getTranslations().stream()
+                    .filter(tr -> tr.getLanguage().equals(lang)).findFirst().orElseThrow();
             for (Document doc : results.getMappedResults()) {
-                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
-                for (QuizTranslation quizTranslation : quiz.getTranslations()) {
-                    Question translatedQuestion = quizTranslation.getQuestions().stream()
-                            .filter((tr) -> tr.getUrl().equals(doc.getString("_id"))).findFirst()
-                            .orElse(new Question(doc.getString("title"),
-                                    doc.getString("description"),
-                                    doc.getString("_id")));
-                    QuestionTranslationDto questionTranslationDto = new QuestionTranslationDto(translatedQuestion.getTitle(),
-                            translatedQuestion.getDescription(), quizTranslation.getLanguage());
-                    questionTranslationDtoList.add(questionTranslationDto);
-                }
-                QuestionResultDto questionResult = new QuestionResultDto(doc.getString("title"),
-                        doc.getString("description"),
-                        doc.getString("_id"),
-                        doc.getInteger("totalScore"),
-                        ++index,
-                        quiz.getLanguage(),
-                        questionTranslationDtoList);
-                questionResultList.add(questionResult);
-            }
-        } else {
-            for (Document doc : results.getMappedResults()) {
-                QuestionResultDto questionResult = new QuestionResultDto(doc.getString("title"),
-                        doc.getString("description"),
+                Question question = quizTranslation.getQuestions().stream()
+                        .filter((q) -> q.getUrl().equals(doc.getString("_id")))
+                        .findFirst()
+                        .orElse(new Question("Missing title", "", doc.getString("_id")));
+
+                QuestionResultDto questionResult = new QuestionResultDto(question.getTitle(),
+                        question.getDescription(),
                         doc.getString("_id"),
                         doc.getInteger("totalScore"),
                         ++index,
@@ -207,7 +294,63 @@ public class QuizResultsService {
                         new ArrayList<>());
                 questionResultList.add(questionResult);
             }
+        } else {
+            for (Document doc : results.getMappedResults()) {
+                Question question = quiz.getQuestions().stream()
+                        .filter((q) -> q.getUrl().equals(doc.getString("_id")))
+                        .findFirst()
+                        .orElse(new Question("Missing title", "", doc.getString("_id")));
+
+                QuestionResultDto questionResult = new QuestionResultDto(question.getTitle(),
+                        question.getDescription(),
+                        doc.getString("_id"),
+                        doc.getInteger("totalScore"),
+                        ++index,
+                        quiz.getLanguage(),
+                        new ArrayList<>());
+                questionResultList.add(questionResult);
+            }
+
         }
+//        }
+        // переводимо результати для подальшого сортування (за назвою)
+//        if (quiz.getTranslations() != null) {
+//            if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang))) {
+//                for (int i = 0; i < questionResultList.size(); i++) {
+//                    String questionUrl = questionResultList.get(i).url();
+//                    QuizTranslation quizTranslation = quiz.getTranslations().stream()
+//                            .filter((tr) -> tr.getLanguage().equals(lang)).findFirst().orElse(null);
+//                    if (quizTranslation == null) continue;
+//                    Question question = quizTranslation.getQuestions().stream()
+//                            .filter((q) -> q.getUrl().equals(questionUrl)).findFirst().orElse(null);
+//                    if (question == null) continue;
+//                    questionResultList.set(i, new QuestionResultDto(question.getUrl(),
+//                            question.getDescription(),
+//                            questionResultList.get(i).url(),
+//                            questionResultList.get(i).score(),
+//                            questionResultList.get(i).place(),
+//                            questionResultList.get(i).language(),
+//                            questionResultList.get(i).translations()));
+//                }
+//            } else if (quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals("uk"))) {
+//                for (int i = 0; i < questionResultList.size(); i++) {
+//                    String questionUrl = questionResultList.get(i).url();
+//                    QuizTranslation quizTranslation = quiz.getTranslations().stream()
+//                            .filter((tr) -> tr.getLanguage().equals("uk")).findFirst().orElse(null);
+//                    if (quizTranslation == null) continue;
+//                    Question question = quizTranslation.getQuestions().stream()
+//                            .filter((q) -> q.getUrl().equals(questionUrl)).findFirst().orElse(null);
+//                    if (question == null) continue;
+//                    questionResultList.set(i, new QuestionResultDto(question.getUrl(),
+//                            question.getDescription(),
+//                            questionResultList.get(i).url(),
+//                            questionResultList.get(i).score(),
+//                            questionResultList.get(i).place(),
+//                            "uk",
+//                            questionResultList.get(i).translations()));
+//                }
+//            }
+//        }
 
         if (sortType == SortQuizResultsType.SCORE_ASC) {
             questionResultList = questionResultList.stream()
@@ -223,8 +366,15 @@ public class QuizResultsService {
                     .collect(Collectors.toList());
         }
 
-        return new QuizResultsDto(new QuizResultDto(questionResultList,
-                0L, LocalDateTime.now()));
+        List<QuestionResultDto> finalQuestionResultList = new LinkedList<>();
+        for (int i = (pageNo - 1) * pageSize; i < pageNo * pageSize; i++) {
+            if (i >= questionResultList.size()) break;
+            finalQuestionResultList.add(questionResultList.get(i));
+        }
+        int numPages = questionResultList.size() / pageSize;
+
+        return new QuizResultsDto(new QuizResultDto(finalQuestionResultList,
+                0L, LocalDateTime.now()), numPages);
     }
 
     public void addNewQuizResult(String authHeader, QuizResult quizResult, int quizPseudoId) {
@@ -317,7 +467,7 @@ public class QuizResultsService {
         Aggregation aggregation = Aggregation.newAggregation(countResults, sortByCount, skipOperation, limitOperation);
         AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "quizResults", Document.class);
         List<ObjectId> quizzesIds = new LinkedList<>();
-        for(Document quizResult : results.getMappedResults()) {
+        for (Document quizResult : results.getMappedResults()) {
             quizzesIds.add((ObjectId) quizResult.get("quiz", DBRef.class).getId());
         }
         return quizzesIds;

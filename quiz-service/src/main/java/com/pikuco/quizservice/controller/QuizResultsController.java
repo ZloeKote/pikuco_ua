@@ -19,21 +19,26 @@ public class QuizResultsController {
 
     @GetMapping("/{pseudoId}")
     public ResponseEntity<QuizResultsDto> showQuizResultsByQuizId(@PathVariable int pseudoId,
-                                                                  @RequestParam(defaultValue = "SCORE_DESC", name = "sort", required = false) String sort) {
+                                                                  @RequestParam(defaultValue = "PLACE_ASC", name = "sort", required = false) String sort,
+                                                                  @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+                                                                  @RequestParam(required = false, defaultValue = "1", name="page") int pageNo,
+                                                                  @RequestParam(required = false, defaultValue = "4", name="pageSize") int pageSize) {
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.SCORE_DESC;
-        QuizResultsDto quizResults = quizResultsService.getQuizResultsById(pseudoId, sortType);
+        QuizResultsDto quizResults = quizResultsService.getQuizResultsById(pseudoId, sortType, lang, pageNo, pageSize);
         return ResponseEntity.ok(quizResults);
     }
 
     @GetMapping("/{pseudoId}/user")
-    public ResponseEntity<QuizResultsDto> showIndividualQuizResults(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+    public ResponseEntity<QuizResultsDto> showIndividualQuizResults(@RequestHeader(name = "Authorization") String authHeader,
                                                                     @PathVariable int pseudoId,
-                                                                    @RequestParam(defaultValue = "PLACE_ASC", name = "sort", required = false) String sort) {
+                                                                    @RequestParam(defaultValue = "PLACE_ASC", name = "sort", required = false) String sort,
+                                                                    @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+                                                                    @RequestParam(required = false, defaultValue = "1", name="page") int pageNo,
+                                                                    @RequestParam(required = false, defaultValue = "4", name="pageSize") int pageSize) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
-
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.PLACE_ASC;
-        QuizResultsDto quizResults = quizResultsService.getIndividualQuizResults(authHeader, pseudoId, sortType);
+        QuizResultsDto quizResults = quizResultsService.getIndividualQuizResults(authHeader, pseudoId, sortType, lang, pageNo, pageSize);
         return ResponseEntity.ok(quizResults);
     }
 

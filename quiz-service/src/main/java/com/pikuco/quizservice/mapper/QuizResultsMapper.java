@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QuizResultsMapper {
-    public static QuizResultsDto mapToQuizResultsDto(QuizResults quizResults) {
-        return new QuizResultsDto(mapToQuizResultDto(quizResults.getResults().getFirst()));
+    public static QuizResultsDto mapToQuizResultsDto(QuizResults quizResults, int numPages) {
+        return new QuizResultsDto(mapToQuizResultDto(quizResults.getResults().getFirst()), numPages);
     }
 
     public static QuizResults mapToQuizResults(QuizResultsDto quizResultsDto) {
