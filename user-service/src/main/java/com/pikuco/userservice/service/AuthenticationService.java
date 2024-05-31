@@ -68,7 +68,7 @@ public class AuthenticationService {
                     )
             );
         } catch (BadCredentialsException e) {
-            throw new ObjectNotValidException(Collections.singleton("Ви ввели невірний пароль"));
+            throw new ObjectNotValidException(Collections.singleton("You entered wrong password"));
         }
 
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow();

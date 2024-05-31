@@ -24,21 +24,21 @@ public class WishlistController {
     }
 
     @PostMapping("/quizzes/{pseudoId}/user")
-    public ResponseEntity<?> addQuizToWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+    public ResponseEntity<?> addQuizToWishlist(@RequestHeader(value = "Authorization") String authHeader,
                                                @PathVariable int pseudoId) {
         wishlistService.addQuizToWishlist(authHeader, pseudoId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/quizzes/{pseudoId}/user")
-    public ResponseEntity<?> deleteQuizFromWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+    public ResponseEntity<?> deleteQuizFromWishlist(@RequestHeader(value = "Authorization") String authHeader,
                                                     @PathVariable int pseudoId) {
         wishlistService.deleteQuizFromWishlist(authHeader, pseudoId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/quizzes/{pseudoId}/user")
-    public ResponseEntity<CheckIsInWishlistResponse> checkIfQuizIsInWishlist(@RequestHeader(required = false, value = "Authorization") String authHeader,
+    public ResponseEntity<CheckIsInWishlistResponse> checkIfQuizIsInWishlist(@RequestHeader(value = "Authorization") String authHeader,
                                                                              @PathVariable int pseudoId) {
         boolean isInWishlist = wishlistService.checkIfQuizIsInWishlist(authHeader, pseudoId);
         return ResponseEntity.ok(new CheckIsInWishlistResponse(isInWishlist));

@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ObjectNotFoundException.class)
     public ResponseEntity<?> handleValidationException(ObjectNotFoundException exception) {
-        return ResponseEntity.badRequest().body(exception.getErrorMessages());
+        return ResponseEntity.notFound().build();
     }
 
     @ExceptionHandler(NonAuthorizedException.class)

@@ -85,7 +85,7 @@ public class UserServiceImpl implements UserService {
                 if (passwordEncoder.matches(newUser.currentPassword(), userToUpdate.getPassword())) {
                     userToUpdate.setPassword(passwordEncoder.encode(newUser.newPassword()));
                 } else {
-                    throw new ObjectNotValidException(new HashSet<>(List.of("You entered an incorrect current password")));
+                    throw new ObjectNotValidException(new HashSet<>(List.of("You entered a wrong current password")));
                 }
             }
 

@@ -37,12 +37,12 @@ public class AuthenticationController {
         if (request.getBirthdate() != null &&
                 (request.getBirthdate().after(new Date(114, Calendar.JANUARY, 1)) ||
                         request.getBirthdate().before(new Date(0, Calendar.JANUARY, 1)))) {
-            throw new ObjectNotValidException(new HashSet<>(List.of("Дата народження не відповідає умовам реєстрації")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("Birthdate doesn't meet the registration requirements")));
         }
         if (userService.getUserByNickname(request.getUsername()).isPresent())
-            throw new ObjectNotValidException(new HashSet<>(List.of("Користувач з таким нікнеймом вже існує")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("A user with the same nickname is already existed")));
         else if (userService.getUserByEmail(request.getEmail()).isPresent())
-            throw new ObjectNotValidException(new HashSet<>(List.of("Користувач з такою поштою вже існує")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("A user with the same email is already existed")));
 
         return ResponseEntity.ok(authenticationService.register(request, response));
     }
@@ -52,7 +52,7 @@ public class AuthenticationController {
                                                                HttpServletResponse httpResponse) {
         authenticationValidator.validate(request);
         if (userService.getUserByEmail(request.getEmail()).isEmpty())
-            throw new ObjectNotValidException(new HashSet<>(List.of("Користувача з такою поштою не існує")));
+            throw new ObjectNotValidException(new HashSet<>(List.of("The user with entered email does not exist")));
         return ResponseEntity.ok(authenticationService.authenticate(request, httpResponse));
     }
 

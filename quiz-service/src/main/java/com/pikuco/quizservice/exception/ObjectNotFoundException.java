@@ -6,9 +6,9 @@ import java.util.Set;
 
 @Getter
 public class ObjectNotFoundException extends RuntimeException {
-    private final Set<String> errorMessages;
+    private final String errorMessage;
 
-    public ObjectNotFoundException(Set<String> errorMessages) {
-        this.errorMessages = errorMessages;
+    public ObjectNotFoundException(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }

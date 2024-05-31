@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     @ExceptionHandler(NonAuthorizedException.class)
     public ResponseEntity<?> handleValidationException(NonAuthorizedException exception) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(403)).body(exception.getErrorMessages());
+        return ResponseEntity.status(HttpStatusCode.valueOf(401)).body(exception.getErrorMessages());
     }
 
     @ExceptionHandler(RuntimeException.class)

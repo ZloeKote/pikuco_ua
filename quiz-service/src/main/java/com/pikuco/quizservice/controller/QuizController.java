@@ -98,7 +98,7 @@ public class QuizController {
             @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
             @RequestBody QuizDto quizDto) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
-            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+            return ResponseEntity.status(HttpStatusCode.valueOf(401)).build();
 
         int id = quizService.addQuiz(authHeader, QuizMapper.mapToQuiz(quizDto));
         return ResponseEntity.ok(id);
@@ -110,7 +110,7 @@ public class QuizController {
             @PathVariable int pseudoId,
             @RequestBody QuizDto quizDto) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
-            return ResponseEntity.status(HttpStatusCode.valueOf(403)).build();
+            return ResponseEntity.status(HttpStatusCode.valueOf(401)).build();
         if (pseudoId != quizDto.pseudoId())
             return ResponseEntity.badRequest().body("Ідентифікатори вікторини не співпадають. Спробуйте знову!");
         quizService.changeQuiz(authHeader, QuizMapper.mapToQuiz(quizDto));
@@ -122,7 +122,7 @@ public class QuizController {
             @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
             @PathVariable int pseudoId) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
-            return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
+            return ResponseEntity.status(HttpStatusCode.valueOf(401)).body("Ви не авторизовані");
         quizService.deleteQuiz(authHeader, pseudoId);
         return ResponseEntity.ok().build();
     }
@@ -133,7 +133,7 @@ public class QuizController {
             @PathVariable int pseudoId,
             @RequestBody QuizTranslationDto quizTranslation) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
-            return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
+            return ResponseEntity.status(HttpStatusCode.valueOf(401)).body("Ви не авторизовані");
         quizService.addQuizTranslation(authHeader, pseudoId, QuizMapper.mapToQuizTranslation(quizTranslation));
         return ResponseEntity.ok().build();
     }
@@ -145,22 +145,24 @@ public class QuizController {
             @PathVariable String language,
             @RequestBody QuizTranslationDto quizTranslation) {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
-            return ResponseEntity.status(HttpStatusCode.valueOf(403)).body("Ви не авторизовані");
+            return ResponseEntity.status(HttpStatusCode.valueOf(401)).body("Ви не авторизовані");
         quizService
                 .editQuizTranslation(authHeader, pseudoId, QuizMapper.mapToQuizTranslation(quizTranslation), language);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{pseudoId}")
-    public ResponseEntity<QuizDto> showQuizByPseudoId(@PathVariable int pseudoId) {
-        QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId));
+    public ResponseEntity<QuizDto> showQuizByPseudoId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                                      @PathVariable int pseudoId) {
+        QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId, authHeader));
         //Collections.shuffle(quizDto.questions());
         return ResponseEntity.ok(quizDto);
     }
 
     @GetMapping("/{pseudoId}/main")
-    public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(@PathVariable int pseudoId) {
-        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId));
+    public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+                                                                @PathVariable int pseudoId) {
+        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId, authHeader));
         return ResponseEntity.ok(quizDto);
     }
 
