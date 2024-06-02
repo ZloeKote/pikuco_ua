@@ -10,6 +10,7 @@ import com.pikuco.quizservice.entity.SortType;
 import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.service.QuizService;
 import com.pikuco.quizservice.utils.Const;
+import feign.Body;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("api/v1/quizzes")
@@ -152,17 +154,21 @@ public class QuizController {
     }
 
     @GetMapping("/{pseudoId}")
-    public ResponseEntity<QuizDto> showQuizByPseudoId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                                      @PathVariable int pseudoId) {
-        QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId, authHeader));
+    public ResponseEntity<QuizDto> showQuizByPseudoId(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @PathVariable int pseudoId) {
+        QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId, lang, authHeader));
         //Collections.shuffle(quizDto.questions());
         return ResponseEntity.ok(quizDto);
     }
 
     @GetMapping("/{pseudoId}/main")
-    public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(@RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-                                                                @PathVariable int pseudoId) {
-        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId, authHeader));
+    public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(
+            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @PathVariable int pseudoId) {
+        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId, lang, authHeader));
         return ResponseEntity.ok(quizDto);
     }
 
@@ -170,5 +176,14 @@ public class QuizController {
     public ResponseEntity<String> showQuizIdByPseudoId(@PathVariable int pseudoId) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         return ResponseEntity.ok(String.valueOf(quiz.getId()));
+    }
+
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<?> changeUserNicknameInQuizzes(@PathVariable long userId,
+                                                         @RequestBody() String newNickname) {
+        if (userId == 0)
+            throw new NoSuchElementException("Неправильне id користувача. Введено 0");
+        quizService.editAuthorNicknameInQuizzes(userId, newNickname);
+        return ResponseEntity.ok().build();
     }
 }

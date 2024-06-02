@@ -1,12 +1,16 @@
 package com.pikuco.userservice.service;
 
+import com.pikuco.userservice.api.QuizAPIClient;
 import com.pikuco.userservice.dto.UserPrivacyToUpdateDto;
 import com.pikuco.userservice.entity.Token;
 import com.pikuco.userservice.entity.User;
 import com.pikuco.userservice.exception.ObjectNotValidException;
 import com.pikuco.userservice.repository.TokenRepository;
 import com.pikuco.userservice.repository.UserRepository;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.InternalServerErrorException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +21,7 @@ import java.util.*;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final TokenRepository tokenRepository;
+    private final QuizAPIClient quizAPIClient;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -65,6 +70,16 @@ public class UserServiceImpl implements UserService {
             userToUpdate.setNickname(newUser.getNickname());
             userToUpdate.setDescription(newUser.getDescription());
             userRepository.save(userToUpdate);
+            if (!nickname.equals(newUser.getNickname())) {
+                ResponseEntity<?> changingNicknameResponse =
+                        quizAPIClient.changeUserNicknameInQuizzes(userToUpdate.getId(), newUser.getNickname());
+                if (changingNicknameResponse.getStatusCode().is4xxClientError())
+                    throw new BadRequestException("Сталася помилка зі сторони клієнта " +
+                            "при оновленні нікнейму автора у вікторинах");
+                else if (changingNicknameResponse.getStatusCode().is5xxServerError())
+                    throw new InternalServerErrorException("Сталася помилка зі сторони сервера " +
+                            "при оновленні нікнейму автора у вікторинах");
+            }
         } catch (NoSuchElementException e) {
             throw new ObjectNotValidException(new HashSet<>(List.of("User is not logged in or there is " +
                     "no information about user that need to update")));

@@ -3,8 +3,6 @@ package com.pikuco.quizservice.service;
 import com.pikuco.quizservice.api.EvaluationAPIClient;
 import com.pikuco.quizservice.api.UserAPIClient;
 import com.pikuco.quizservice.api.WishlistAPIClient;
-import com.pikuco.quizservice.dto.QuizzesRequest;
-import com.pikuco.quizservice.dto.QuizzesResponse;
 import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.dto.quiz.QuizCardDto;
 import com.pikuco.quizservice.dto.quiz.QuizListDto;
@@ -26,6 +24,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -223,7 +222,7 @@ public class QuizService {
             int greatestId = quizRepository.findFirstByOrderByPseudoIdDesc().orElseThrow().getPseudoId();
             quiz.setPseudoId(++greatestId);
         } else {
-            quiz.setId(getQuizByPseudoId(quiz.getPseudoId(), authHeader).getId());
+            quiz.setId(getQuizByPseudoId(quiz.getPseudoId(), "", authHeader).getId());
         }
         if (!quiz.isRoughDraft()) {
             quiz.setCreatedAt(LocalDateTime.now());
@@ -331,11 +330,13 @@ public class QuizService {
     }
 
     public Quiz getQuizByPseudoId(int quizId) {
-        return quizRepository.findQuizByPseudoId(quizId)
+        Quiz quiz = quizRepository.findQuizByPseudoId(quizId)
                 .orElseThrow(() -> new ObjectNotFoundException("Турнір не знайдено"));
+        quiz.setLanguages(getLanguages(quiz));
+        return quiz;
     }
 
-    public Quiz getQuizByPseudoId(int quizId, String authHeader) {
+    public Quiz getQuizByPseudoId(int quizId, String lang, String authHeader) {
         Quiz quiz = quizRepository.findQuizByPseudoId(quizId)
                 .orElseThrow(() -> new ObjectNotFoundException("Турнір не знайдено"));
         if (quiz.isRoughDraft() && (authHeader == null || !authHeader.startsWith("Bearer ")))
@@ -345,11 +346,34 @@ public class QuizService {
                 Long creatorId = getUser(authHeader).id();
                 if (!quiz.getCreator().getCreator_id().equals(creatorId))
                     throw new ObjectNotFoundException("Турнір не знайдено");
-                return quiz;
             } catch (Exception e) {
                 throw new ObjectNotFoundException("Турнір не знайдено");
             }
-        } else return quiz;
+        }
+
+        quiz.setLanguages(getLanguages(quiz));
+        if (lang == null || lang.isBlank()) return quiz;
+
+        if (quiz.getTranslations() != null &&
+                quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang))) {
+            QuizTranslation quizTranslation = quiz.getTranslations().stream()
+                    .filter((tr) -> tr.getLanguage().equals(lang)).findFirst().orElseThrow();
+            quiz.setTitle(quizTranslation.getTitle());
+            quiz.setDescription(quizTranslation.getDescription());
+            quiz.setQuestions(quizTranslation.getQuestions());
+            quiz.setLanguage(lang);
+        }
+        return quiz;
+    }
+
+    public void editAuthorNicknameInQuizzes(long userId, String newNickname) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("creator.creator_id").is(userId));
+
+        Update update = new Update();
+        update.set("creator.nickname", newNickname);
+
+        mongoTemplate.updateMulti(query, update, "quiz");
     }
 
     private void validateQuiz(Quiz quiz) {
@@ -460,6 +484,7 @@ public class QuizService {
         List<QuizCardDto> quizzes = new ArrayList<>(results.size());
         for (Quiz quiz : results) {
             if (quiz == null) continue;
+            quiz.setLanguages(getLanguages(quiz));
             QuizCardDto quizCard;
             QuizCardDto quizCardOriginal = QuizMapper.mapToQuizCardDto(quiz);
             if (quiz.getTranslations() == null || quiz.getLanguage().equals(lang)) quizCard = quizCardOriginal;
