@@ -8,7 +8,6 @@ public record QuestionResultDto (
         String url,
         int score,
         int place,
-        String language,
-        List<QuestionTranslationDto> translations
+        String language
 ) {
 }

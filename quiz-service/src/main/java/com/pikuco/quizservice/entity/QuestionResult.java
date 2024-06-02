@@ -11,8 +11,6 @@ import org.springframework.data.annotation.Transient;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QuestionResult {
-    private String title;
-    private String description;
     private String url;
     private int place;
     @Transient

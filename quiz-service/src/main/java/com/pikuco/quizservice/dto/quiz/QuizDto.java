@@ -2,7 +2,6 @@ package com.pikuco.quizservice.dto.quiz;
 
 import com.pikuco.quizservice.dto.CreatorDto;
 import com.pikuco.quizservice.entity.Question;
-import com.pikuco.quizservice.entity.QuizTranslation;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +19,5 @@ public record QuizDto(
         boolean isRoughDraft,
         String cover,
         String language,
-        String[] languages,
-        List<QuizTranslation> translations
+        String[] languages
 ) {}
