@@ -48,7 +48,7 @@ public class QuizController {
 
     @GetMapping("{quizId}/results")
     public ResponseEntity<QuizResultsDto> showQuizResultsById(@PathVariable int quizId) {
-        QuizResultsDto quizResultsDto = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getQuizResultsById(quizId));
+        QuizResultsDto quizResultsDto = QuizResultsMapper.mapToQuizResultsDto(quizResultsService.getQuizResultsById(quizId), 1);
         return ResponseEntity.ok(quizResultsDto);
     }
 }
