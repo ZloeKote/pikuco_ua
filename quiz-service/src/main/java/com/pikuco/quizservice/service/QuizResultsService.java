@@ -2,7 +2,10 @@ package com.pikuco.quizservice.service;
 
 import com.mongodb.DBRef;
 import com.pikuco.quizservice.api.UserAPIClient;
-import com.pikuco.quizservice.dto.*;
+import com.pikuco.quizservice.dto.QuestionResultDto;
+import com.pikuco.quizservice.dto.QuizResultDto;
+import com.pikuco.quizservice.dto.QuizResultsDto;
+import com.pikuco.quizservice.dto.UserDto;
 import com.pikuco.quizservice.entity.*;
 import com.pikuco.quizservice.exception.NonAuthorizedException;
 import com.pikuco.quizservice.repository.QuizResultsRepository;
@@ -21,7 +24,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import javax.print.Doc;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -57,13 +59,7 @@ public class QuizResultsService {
         UnwindOperation unwindQuestions = Aggregation.unwind("results.questions");
         // sort
         SortOperation sortOperation = Aggregation.sort(Sort.Direction.ASC, "results.questions.place");
-        if (sortType == SortQuizResultsType.TITLE_ASC) {
-            sortOperation = Aggregation.sort(Sort.Direction.ASC, "results.questions.title");
-        } else if (sortType == SortQuizResultsType.TITLE_DESC) {
-            sortOperation = Aggregation.sort(Sort.Direction.DESC, "results.questions.title");
-        } else if (sortType == SortQuizResultsType.PLACE_DESC) {
-            sortOperation = Aggregation.sort(Sort.Direction.DESC, "results.questions.place");
-        }
+
         // project only needed fields
         ProjectionOperation projectionOperation = Aggregation.project()
                 .and("results.participant_id").as("participant_id")
@@ -124,24 +120,39 @@ public class QuizResultsService {
                         questionResult.getUrl(),
                         questionResult.getScore(),
                         questionResult.getPlace(),
-                        quiz.getLanguage(),
-                        new ArrayList<>());
+                        quiz.getLanguage());
                 questionResultList.add(questionResultDto);
             }
 
         } else {
             for (QuestionResult questionResult : results.getQuestions()) {
-                QuestionResultDto questionResultDto = new QuestionResultDto(questionResult.getTitle(),
-                        questionResult.getDescription(),
+                Question question = quiz.getQuestions().stream()
+                        .filter(q -> q.getUrl().equals(questionResult.getUrl())).findFirst().orElseThrow();
+                QuestionResultDto questionResultDto = new QuestionResultDto(question.getTitle(),
+                        question.getDescription(),
                         questionResult.getUrl(),
                         questionResult.getScore(),
                         questionResult.getPlace(),
-                        quiz.getLanguage(),
-                        new ArrayList<>());
+                        quiz.getLanguage());
                 questionResultList.add(questionResultDto);
             }
         }
 //        }
+
+        if (sortType == SortQuizResultsType.SCORE_ASC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparingInt(QuestionResultDto::place).reversed())
+                    .collect(Collectors.toList());
+        } else if (sortType == SortQuizResultsType.TITLE_ASC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparing(QuestionResultDto::title))
+                    .collect(Collectors.toList());
+        } else if (sortType == SortQuizResultsType.TITLE_DESC) {
+            questionResultList = questionResultList.stream()
+                    .sorted(Comparator.comparing(QuestionResultDto::title).reversed())
+                    .collect(Collectors.toList());
+        }
+
         List<QuestionResultDto> finalQuestionResultList = new LinkedList<>();
         for (int i = (pageNo - 1) * pageSize; i < pageNo * pageSize; i++) {
             if (i >= questionResultList.size()) break;
@@ -179,7 +190,7 @@ public class QuizResultsService {
                             quizTranslation.getQuestions().get(i).getTitle(),
                             quizTranslation.getQuestions().get(i).getDescription(),
                             quizTranslation.getQuestions().get(i).getUrl(),
-                            0, i + 1, lang, null));
+                            0, i + 1, lang));
                 }
             } else {
                 for (int i = 0; i < quiz.getQuestions().size(); i++) {
@@ -187,7 +198,7 @@ public class QuizResultsService {
                             quiz.getQuestions().get(i).getTitle(),
                             quiz.getQuestions().get(i).getDescription(),
                             quiz.getQuestions().get(i).getUrl(),
-                            0, i + 1, quiz.getLanguage(), null));
+                            0, i + 1, quiz.getLanguage()));
                 }
             }
             switch (sortType) {
@@ -290,8 +301,7 @@ public class QuizResultsService {
                         doc.getString("_id"),
                         doc.getInteger("totalScore"),
                         ++index,
-                        quiz.getLanguage(),
-                        new ArrayList<>());
+                        quiz.getLanguage());
                 questionResultList.add(questionResult);
             }
         } else {
@@ -306,8 +316,7 @@ public class QuizResultsService {
                         doc.getString("_id"),
                         doc.getInteger("totalScore"),
                         ++index,
-                        quiz.getLanguage(),
-                        new ArrayList<>());
+                        quiz.getLanguage());
                 questionResultList.add(questionResult);
             }
 
