@@ -47,5 +47,7 @@ public class Quiz {
     private String language;
     @Field(name = "translations")
     private List<QuizTranslation> translations;
+
+    private String[] languages;
 }
 
