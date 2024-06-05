@@ -244,22 +244,26 @@ public class QuizService {
         if (!Objects.equals(quizToChange.getCreator().getCreator_id(), creatorId))
             throw new NonAuthorizedException("Your are not author of the quiz, therefore you cannot change it");
 
-        quiz.setId(quizToChange.getId());
-        quiz.setCreator(quizToChange.getCreator());
-        quiz.setCreatedAt(quizToChange.getCreatedAt());
         if (!quizToChange.isRoughDraft() && !quiz.isRoughDraft()) { // залишився не чернеткою
-            quiz.setUpdatedAt(LocalDateTime.now());
+            quizToChange.setUpdatedAt(LocalDateTime.now());
         } else if (quizToChange.isRoughDraft() && !quiz.isRoughDraft()) { // був чернеткою -> став не чернеткою
-            quiz.setCreatedAt(LocalDateTime.now());
-            quiz.setUpdatedAt(quiz.getCreatedAt());
+            quizToChange.setCreatedAt(LocalDateTime.now());
+            quizToChange.setUpdatedAt(quiz.getCreatedAt());
         } else if (!quizToChange.isRoughDraft()) { // був не чернеткою -> став чернеткою
             throw new ObjectNotValidException(new HashSet<>(List.of("You cannot change already published tournament to rough draft")));
         }
 
         validateQuiz(quiz);
 
-        Query query = new Query().addCriteria(Criteria.where("_id").is(quiz.getId()));
-        mongoTemplate.findAndReplace(query, quiz, "quiz");
+        quizToChange.setTitle(quiz.getTitle());
+        quizToChange.setDescription(quiz.getDescription());
+        quizToChange.setType(quiz.getType());
+        quizToChange.setLanguage(quiz.getLanguage());
+        quizToChange.setNumQuestions(quiz.getNumQuestions());
+        quizToChange.setQuestions(quiz.getQuestions());
+
+        Query query = new Query().addCriteria(Criteria.where("_id").is(quizToChange.getId()));
+        mongoTemplate.findAndReplace(query, quizToChange, "quiz");
     }
 
     public void deleteQuiz(String authHeader, int pseudoId) {
