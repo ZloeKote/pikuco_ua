@@ -38,8 +38,9 @@ public class WishlistController {
     }
 
     @GetMapping("/quizzes/{pseudoId}/user")
-    public ResponseEntity<CheckIsInWishlistResponse> checkIfQuizIsInWishlist(@RequestHeader(value = "Authorization") String authHeader,
-                                                                             @PathVariable int pseudoId) {
+    public ResponseEntity<CheckIsInWishlistResponse> checkIfQuizIsInWishlist(
+            @RequestHeader(value = "Authorization") String authHeader,
+            @PathVariable int pseudoId) {
         boolean isInWishlist = wishlistService.checkIfQuizIsInWishlist(authHeader, pseudoId);
         return ResponseEntity.ok(new CheckIsInWishlistResponse(isInWishlist));
     }
@@ -47,7 +48,7 @@ public class WishlistController {
     @GetMapping("/quizzes/users/{userId}")
     public ResponseEntity<List<String>> getWishlistedQuizzesIdsByUserId(
             @PathVariable long userId,
-            @RequestParam(name = "page", required = false, defaultValue = "0") int pageNo,
+            @RequestParam(name = "page", required = false, defaultValue = "1") int pageNo,
             @RequestParam(name = "pageSize", required = false, defaultValue = "4") int pageSize) {
         List<String> quizzesIds = wishlistService.getWishlistedQuizzesIdByUserId(userId, pageNo, pageSize);
         return ResponseEntity.ok(quizzesIds);

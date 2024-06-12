@@ -31,7 +31,7 @@ public class User implements UserDetails {
     private String password;
     @Column(name="email", nullable = false, unique = true)
     private String email;
-    @Column(name="avatar", nullable = false)
+    @Column(name="avatar")
     private String avatar;
     @Column(name="user_description")
     private String description;

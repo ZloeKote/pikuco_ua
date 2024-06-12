@@ -155,8 +155,8 @@ public class QuizController {
 
     @GetMapping("/{pseudoId}")
     public ResponseEntity<QuizDto> showQuizByPseudoId(
-            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
-            @RequestParam(name = "lang", required = false) String lang,
+            @RequestHeader(required = false, name = "Authorization") String authHeader,
+            @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
             @PathVariable int pseudoId) {
         QuizDto quizDto = QuizMapper.mapToQuizDto(quizService.getQuizByPseudoId(pseudoId, lang, authHeader));
         //Collections.shuffle(quizDto.questions());
@@ -165,7 +165,7 @@ public class QuizController {
 
     @GetMapping("/{pseudoId}/main")
     public ResponseEntity<QuizBasicDto> showQuizBasicByPseudoId(
-            @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
+            @RequestHeader(required = false, name = "Authorization") String authHeader,
             @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
             @PathVariable int pseudoId) {
         QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizByPseudoId(pseudoId, lang, authHeader));

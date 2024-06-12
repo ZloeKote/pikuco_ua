@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.core.HttpHeaders;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,6 +34,9 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+
+    @Value("${pikuco.security.jwt.refresh-token.expiration}")
+    private long refreshExpiration;
 
     public AuthenticationResponse register(RegisterRequest request, HttpServletResponse response) {
         User user = User.builder()
@@ -141,15 +145,16 @@ public class AuthenticationService {
         return new AuthenticationResponse();
     }
 
-    private static void setJwtCookie(HttpServletResponse response, String refreshToken) {
+    private void setJwtCookie(HttpServletResponse response, String refreshToken) {
         Cookie jwtCookie = new Cookie(HttpHeaders.AUTHORIZATION, refreshToken);
         Cookie refreshFlag = new Cookie("LoggedIn", "1");
+        int refreshExpirationInS = (int) (refreshExpiration / 1000);
         jwtCookie.setHttpOnly(true);
         jwtCookie.setSecure(true);
         jwtCookie.setPath("/");
         refreshFlag.setPath("/");
-        jwtCookie.setMaxAge(60*24);
-        refreshFlag.setMaxAge(60*24);
+        jwtCookie.setMaxAge(refreshExpirationInS);
+        refreshFlag.setMaxAge(refreshExpirationInS);
 
         response.addCookie(jwtCookie);
         response.addCookie(refreshFlag);
