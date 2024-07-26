@@ -111,4 +111,21 @@ public class UserServiceImpl implements UserService {
                     "no information about user that need to update")));
         }
     }
+
+    @Override
+    public void deleteUser(String token, String nickname, boolean deleteQuizzes) {
+        User authUser = getUserByToken(token);
+        User userToDelete = getUserByNickname(nickname).orElseThrow();
+
+        if (!Objects.equals(authUser.getId(), userToDelete.getId()))
+            throw new ObjectNotValidException(new HashSet<>(List.of("Authorized user is not the user that need to delete")));
+        if (deleteQuizzes) {
+            quizAPIClient.deleteQuizzedByUserId(authUser.getId());
+        }
+        if (tokenRepository.deleteAllByUser(authUser.getId()))
+            userRepository.deleteById(authUser.getId());
+        else
+            throw new InternalServerErrorException("There is an error while " +
+                    "deleting the current user. Please try later");
+    }
 }

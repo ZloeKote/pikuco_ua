@@ -284,6 +284,11 @@ public class QuizService {
         } else throw new NonAuthorizedException("Your are not author of the quiz, therefore you cannot delete it");
     }
 
+    public void deleteQuizzesByUserId(long userId) {
+        List<Quiz> quizzesToDelete = quizRepository.findAllByCreator_Creator_id(userId);
+        quizRepository.deleteAll(quizzesToDelete);
+    }
+
     public void addQuizTranslation(String authHeader, int pseudoId, QuizTranslation quizTranslation) {
         Long creatorId = getUser(authHeader).id();
 

@@ -129,6 +129,12 @@ public class QuizController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<?> deleteQuizzedByUserId(@PathVariable long userId) {
+        quizService.deleteQuizzesByUserId(userId);
+        return ResponseEntity.ok().build();
+    }
+
     @PutMapping("/{pseudoId}/translations")
     public ResponseEntity<?> addQuizTranslation(
             @RequestHeader(defaultValue = "none", name = "Authorization") String authHeader,
