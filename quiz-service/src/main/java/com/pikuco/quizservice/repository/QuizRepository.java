@@ -13,6 +13,6 @@ public interface QuizRepository extends MongoRepository<Quiz, ObjectId> {
     Optional<Quiz> findQuizByPseudoId(int quizId);
     Optional<Quiz> findFirstByOrderByPseudoIdDesc();
     List<Quiz> findAllByIdIn(List<ObjectId> ids);
-    List<Quiz> findAllByCreator_Creator_id(Long userId);
+    List<Quiz> findAllByCreator_CreatorId(Long userId);
 
 }

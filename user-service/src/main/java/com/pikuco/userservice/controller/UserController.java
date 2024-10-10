@@ -102,7 +102,9 @@ public class UserController {
     @DeleteMapping("/{nickname}")
     public ResponseEntity<?> deleteUserByNickname(@RequestHeader("Authorization") String authHeader,
                                                   @PathVariable String nickname,
-                                                  @RequestParam(name="delete_quizzes") boolean deleteQuizzes) {
+                                                  @RequestParam(name="delete_quizzes",
+                                                          required = false,
+                                                          defaultValue = "true") boolean deleteQuizzes) {
         String token = authHeader.substring(7);
         userService.deleteUser(token, nickname, deleteQuizzes);
         return ResponseEntity.ok().build();

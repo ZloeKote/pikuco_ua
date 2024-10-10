@@ -13,5 +13,5 @@ public interface QuizAPIClient {
     ResponseEntity<?> changeUserNicknameInQuizzes(@PathVariable long userId,
                                                   @RequestBody() String newNickname);
     @DeleteMapping("api/v1/quizzes/users/{userId}")
-    ResponseEntity<?> deleteQuizzedByUserId(@PathVariable long userId);
+    ResponseEntity<?> deleteQuizzesByUserId(@PathVariable long userId);
 }

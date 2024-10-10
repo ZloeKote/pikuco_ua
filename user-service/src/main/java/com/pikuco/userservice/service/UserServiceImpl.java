@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -32,8 +33,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getUserByToken(String token) {
-        Token foundToken = tokenRepository.findByToken(token).orElse(null);
-        if (foundToken == null)
+        Token foundToken = tokenRepository.findByToken(token).orElseThrow(NoSuchElementException::new);
+        if (foundToken.isExpired() || foundToken.isRevoked())
             throw new NoSuchElementException();
         return userRepository.findById(foundToken.getUser().getId()).orElseThrow(NoSuchElementException::new);
     }
@@ -50,7 +51,6 @@ public class UserServiceImpl implements UserService {
         if (!Objects.equals(authUser.getId(), userPrivacy.getId()))
             throw new ObjectNotValidException(new HashSet<>(List.of("Authenticated user it is not the user whose " +
                     "privacy information was requested")));
-
 
         return userPrivacy;
     }
@@ -113,6 +113,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void deleteUser(String token, String nickname, boolean deleteQuizzes) {
         User authUser = getUserByToken(token);
         User userToDelete = getUserByNickname(nickname).orElseThrow();
@@ -120,12 +121,12 @@ public class UserServiceImpl implements UserService {
         if (!Objects.equals(authUser.getId(), userToDelete.getId()))
             throw new ObjectNotValidException(new HashSet<>(List.of("Authorized user is not the user that need to delete")));
         if (deleteQuizzes) {
-            quizAPIClient.deleteQuizzedByUserId(authUser.getId());
+            quizAPIClient.deleteQuizzesByUserId(authUser.getId());
         }
-        if (tokenRepository.deleteAllByUser(authUser.getId()))
-            userRepository.deleteById(authUser.getId());
-        else
-            throw new InternalServerErrorException("There is an error while " +
-                    "deleting the current user. Please try later");
+        tokenRepository.deleteAllByUser(authUser.getId());
+        if (userRepository.deleteUserById(authUser.getId()) >= 1)
+            return;
+        throw new InternalServerErrorException("There is an error while " +
+                "deleting the current user. Please try later");
     }
 }

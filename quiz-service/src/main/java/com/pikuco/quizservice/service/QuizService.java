@@ -241,7 +241,7 @@ public class QuizService {
         Quiz quizToChange = quizRepository.findQuizByPseudoId(quiz.getPseudoId())
                 .orElseThrow(() -> new ObjectNotFoundException("Tournament was not found "));
 
-        if (!Objects.equals(quizToChange.getCreator().getCreator_id(), creatorId))
+        if (!Objects.equals(quizToChange.getCreator().getCreatorId(), creatorId))
             throw new NonAuthorizedException("Your are not author of the quiz, therefore you cannot change it");
 
         if (!quizToChange.isRoughDraft() && !quiz.isRoughDraft()) { // залишився не чернеткою
@@ -271,7 +271,7 @@ public class QuizService {
 
         Quiz quizToDelete = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
                 new ObjectNotFoundException("Tournament was not found"));
-        if (Objects.equals(quizToDelete.getCreator().getCreator_id(), creatorId)) {
+        if (Objects.equals(quizToDelete.getCreator().getCreatorId(), creatorId)) {
             // delete all evaluations of quiz
             evaluationAPIClient.deleteAllEvaluationsByQuizId(quizToDelete.getId().toString());
             // delete quiz from all wishlists
@@ -285,7 +285,7 @@ public class QuizService {
     }
 
     public void deleteQuizzesByUserId(long userId) {
-        List<Quiz> quizzesToDelete = quizRepository.findAllByCreator_Creator_id(userId);
+        List<Quiz> quizzesToDelete = quizRepository.findAllByCreator_CreatorId(userId);
         quizRepository.deleteAll(quizzesToDelete);
     }
 
@@ -298,7 +298,7 @@ public class QuizService {
         // validate quiz translation
         validateQuizTranslation(quiz, quizTranslation, null);
 
-        if (Objects.equals(quiz.getCreator().getCreator_id(), creatorId)) {
+        if (Objects.equals(quiz.getCreator().getCreatorId(), creatorId)) {
             if (quiz.getTranslations() == null) {
                 List<QuizTranslation> quizTranslations = new ArrayList<>();
                 quizTranslations.add(quizTranslation);
@@ -318,7 +318,7 @@ public class QuizService {
         Quiz quiz = quizRepository.findQuizByPseudoId(pseudoId).orElseThrow(() ->
                 new ObjectNotFoundException("Tournament was not found"));
 
-        if (Objects.equals(quiz.getCreator().getCreator_id(), creatorId)) {
+        if (Objects.equals(quiz.getCreator().getCreatorId(), creatorId)) {
             if (quiz.getTranslations() != null) {
                 for (int i = 0; i < quiz.getTranslations().size(); i++) {
                     if (quiz.getTranslations().get(i).getLanguage().equals(language)) {
@@ -353,7 +353,7 @@ public class QuizService {
         else if (quiz.isRoughDraft()) {
             try {
                 Long creatorId = getUser(authHeader).id();
-                if (!quiz.getCreator().getCreator_id().equals(creatorId))
+                if (!quiz.getCreator().getCreatorId().equals(creatorId))
                     throw new ObjectNotFoundException("Турнір не знайдено");
             } catch (Exception e) {
                 throw new ObjectNotFoundException("Турнір не знайдено");
@@ -387,7 +387,7 @@ public class QuizService {
 
     private void validateQuiz(Quiz quiz) {
         // validate creator's credentials
-        if (quiz.getCreator().getCreator_id() == 0 || (quiz.getCreator().getNickname() == null || quiz.getCreator().getNickname().isBlank()))
+        if (quiz.getCreator().getCreatorId() == 0 || (quiz.getCreator().getNickname() == null || quiz.getCreator().getNickname().isBlank()))
             throw new ObjectNotValidException(new HashSet<>(List.of("Ви не авторизовані")));
 
         // validate title

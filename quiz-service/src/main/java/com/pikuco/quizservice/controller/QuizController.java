@@ -130,7 +130,7 @@ public class QuizController {
     }
 
     @DeleteMapping("/users/{userId}")
-    public ResponseEntity<?> deleteQuizzedByUserId(@PathVariable long userId) {
+    public ResponseEntity<?> deleteQuizzesByUserId(@PathVariable long userId) {
         quizService.deleteQuizzesByUserId(userId);
         return ResponseEntity.ok().build();
     }
