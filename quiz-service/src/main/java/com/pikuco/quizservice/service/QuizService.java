@@ -77,7 +77,7 @@ public class QuizService {
             }
         }
         if (creatorNickname != null) {
-            criteriaList.add(Criteria.where("creator.nickname").regex(creatorNickname, "i"));
+            criteriaList.add(Criteria.where("creator.nickname").regex("^" + creatorNickname + "$", "i"));
         }
 
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
@@ -286,6 +286,11 @@ public class QuizService {
 
     public void deleteQuizzesByUserId(long userId) {
         List<Quiz> quizzesToDelete = quizRepository.findAllByCreator_CreatorId(userId);
+        List<ObjectId> quizzesIds = quizzesToDelete.stream().map(Quiz::getId).toList();
+        // delete quizzes' results
+        QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
+        quizResultsService.deleteQuizzesResultsByQuizId(quizzesIds);
+        // delete quizzes
         quizRepository.deleteAll(quizzesToDelete);
     }
 

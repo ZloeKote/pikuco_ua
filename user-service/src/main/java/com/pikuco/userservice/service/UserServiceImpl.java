@@ -1,9 +1,12 @@
 package com.pikuco.userservice.service;
 
+import com.pikuco.userservice.api.EvaluationAPIClient;
 import com.pikuco.userservice.api.QuizAPIClient;
+import com.pikuco.userservice.api.WishlistAPIClient;
 import com.pikuco.userservice.dto.UserPrivacyToUpdateDto;
 import com.pikuco.userservice.entity.Token;
 import com.pikuco.userservice.entity.User;
+import com.pikuco.userservice.entity.UserRole;
 import com.pikuco.userservice.exception.ObjectNotValidException;
 import com.pikuco.userservice.repository.TokenRepository;
 import com.pikuco.userservice.repository.UserRepository;
@@ -23,6 +26,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final TokenRepository tokenRepository;
     private final QuizAPIClient quizAPIClient;
+    private final EvaluationAPIClient evaluationAPIClient;
+    private final WishlistAPIClient wishlistAPIClient;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -118,15 +123,55 @@ public class UserServiceImpl implements UserService {
         User authUser = getUserByToken(token);
         User userToDelete = getUserByNickname(nickname).orElseThrow();
 
+        String uniqueSymbols = generateRandomString(14);
+        String deletedUserNickname = "[deleted-" + uniqueSymbols + "]";
+        String deletedUserEmail = "deleted." + uniqueSymbols + "@deleted.com";
+        User deletedUser = User.builder()
+                .id(userToDelete.getId())
+                .email(deletedUserEmail)
+                .nickname(deletedUserNickname)
+                .description("")
+                .role(UserRole.DELETED)
+                .avatar("some path")
+                .creationDate(userToDelete.getCreationDate())
+                .password(userToDelete.getPassword())
+                .build();
+
         if (!Objects.equals(authUser.getId(), userToDelete.getId()))
             throw new ObjectNotValidException(new HashSet<>(List.of("Authorized user is not the user that need to delete")));
-        if (deleteQuizzes) {
-            quizAPIClient.deleteQuizzesByUserId(authUser.getId());
-        }
-        tokenRepository.deleteAllByUser(authUser.getId());
-        if (userRepository.deleteUserById(authUser.getId()) >= 1)
+        try {
+            // delete user by removing information about him in database
+            userRepository.save(deletedUser);
+            // delete all user's tokens
+            tokenRepository.deleteAllByUser(authUser.getId());
+            // delete all user's evaluations
+            evaluationAPIClient.deleteAllEvaluationsByUserId(deletedUser.getId());
+            // delete all user's wishlists
+            wishlistAPIClient.deleteAllWishlistsByUserId(userToDelete.getId());
+            // delete all user's quizzes if he wants to delete them
+            if (deleteQuizzes) quizAPIClient.deleteQuizzesByUserId(authUser.getId());
+                // or change all creator's nickname in his quizzes
+            else quizAPIClient.changeUserNicknameInQuizzes(deletedUser.getId(), deletedUser.getNickname());
+
             return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+//        if (userRepository.deleteUserById(authUser.getId()) >= 1)
+//            return;
         throw new InternalServerErrorException("There is an error while " +
                 "deleting the current user. Please try later");
+    }
+
+    private String generateRandomString(int length) {
+        int leftLimit = 48; // numeral '0'
+        int rightLimit = 122; // letter 'z'
+        Random random = new Random();
+
+        return random.ints(leftLimit, rightLimit + 1)
+                .filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
+                .limit(length)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
     }
 }

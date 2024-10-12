@@ -64,6 +64,11 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        // check if user is deleted
+        if (user.getRole().equals(UserRole.DELETED))
+            throw new ObjectNotValidException(Collections.singleton("You cannot login as deleted user"));
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -75,7 +80,6 @@ public class AuthenticationService {
             throw new ObjectNotValidException(Collections.singleton("You entered wrong password"));
         }
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
         String jwtToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 

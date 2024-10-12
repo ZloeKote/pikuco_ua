@@ -62,6 +62,11 @@ public class WishlistService {
         mongoTemplate.findAllAndRemove(matchQuery, "wishlist");
     }
 
+    public void deleteAllWishlistsByUserId(long userId) {
+        Query matchQuery = new Query(Criteria.where("user_id").is(userId));
+        mongoTemplate.findAllAndRemove(matchQuery, "wishlist");
+    }
+
     public List<String> getWishlistedQuizzesIdByUserId(Long userId, int pageNo, int pageSize) {
         MatchOperation matchOperation = Aggregation.match(new Criteria().andOperator(
                 Criteria.where("type").is("quiz"),

@@ -430,6 +430,11 @@ public class QuizResultsService {
         quizResultsRepository.deleteQuizResultsByQuiz_Id(quizId);
     }
 
+    public void deleteQuizzesResultsByQuizId(List<ObjectId> quizzesId) {
+        Query matchQuery = new Query(Criteria.where("quiz.$id").in(quizzesId));
+        mongoTemplate.remove(matchQuery, "quizResults");
+    }
+
     public List<ObjectId> getQuizzesIdByParticipantId(Long participantId, SortQuizResultsType sortType, int pageNo, int pageSize) {
         MatchOperation matchOperation = Aggregation.match(Criteria.where("results").elemMatch(Criteria.where("participant_id").is(participantId)));
         UnwindOperation unwindOperation = Aggregation.unwind("results");

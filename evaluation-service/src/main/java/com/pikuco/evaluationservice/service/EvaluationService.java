@@ -137,6 +137,11 @@ public class EvaluationService {
         mongoTemplate.findAllAndRemove(matchQuery, "evaluation");
     }
 
+    public void deleteQuizEvaluationsByUserId(long userId) {
+        Query matchQuery = new Query(Criteria.where("user_id").is(userId));
+        mongoTemplate.findAllAndRemove(matchQuery, "evaluation");
+    }
+
     public Map<String, Object> getBestQuizzesIds(@NonNull List<String> quizzesIds, int pageNo, int pageSize) {
         List<Switch.CaseOperator> cases = new ArrayList<>();
         Switch.CaseOperator caseOperatorTrue = Switch.CaseOperator

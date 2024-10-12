@@ -64,4 +64,10 @@ public class WishlistController {
         wishlistService.deleteQuizWishlistsByQuizId(quizId);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<?> deleteAllWishlistsByUserId(@PathVariable long userId) {
+        wishlistService.deleteAllWishlistsByUserId(userId);
+        return ResponseEntity.ok().build();
+    }
 }

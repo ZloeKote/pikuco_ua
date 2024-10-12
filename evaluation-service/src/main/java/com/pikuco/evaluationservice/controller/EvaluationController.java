@@ -45,6 +45,12 @@ public class EvaluationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<?> deleteAllEvaluationsByUserId(@PathVariable long userId) {
+        evaluationService.deleteQuizEvaluationsByUserId(userId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/quizzes/best")
     public ResponseEntity<Map<String, Object>> showBestQuizzesIds(
             @RequestParam List<String> quizzesIds,
