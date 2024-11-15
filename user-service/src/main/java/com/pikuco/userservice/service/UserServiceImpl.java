@@ -152,15 +152,14 @@ public class UserServiceImpl implements UserService {
             if (deleteQuizzes) quizAPIClient.deleteQuizzesByUserId(authUser.getId());
                 // or change all creator's nickname in his quizzes
             else quizAPIClient.changeUserNicknameInQuizzes(deletedUser.getId(), deletedUser.getNickname());
-
-            return;
         } catch (Exception e) {
             e.printStackTrace();
+            throw new InternalServerErrorException("There is an error while " +
+                    "deleting the current user. Please try later");
         }
 //        if (userRepository.deleteUserById(authUser.getId()) >= 1)
 //            return;
-        throw new InternalServerErrorException("There is an error while " +
-                "deleting the current user. Please try later");
+
     }
 
     private String generateRandomString(int length) {
