@@ -18,13 +18,14 @@ public class QuizResultsController {
     private QuizResultsService quizResultsService;
 
     @GetMapping("/{pseudoId}")
-    public ResponseEntity<QuizResultsDto> showQuizResultsByQuizId(@PathVariable int pseudoId,
+    public ResponseEntity<QuizResultsDto> showQuizResultsByQuizId(@RequestHeader(name = "Authorization", required = false) String authHeader,
+                                                                  @PathVariable int pseudoId,
                                                                   @RequestParam(defaultValue = "PLACE_ASC", name = "sort", required = false) String sort,
                                                                   @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
                                                                   @RequestParam(required = false, defaultValue = "1", name="page") int pageNo,
                                                                   @RequestParam(required = false, defaultValue = "4", name="pageSize") int pageSize) {
         SortQuizResultsType sortType = SortQuizResultsType.checkType(sort) != null ? SortQuizResultsType.checkType(sort) : SortQuizResultsType.SCORE_DESC;
-        QuizResultsDto quizResults = quizResultsService.getQuizResultsById(pseudoId, sortType, lang, pageNo, pageSize);
+        QuizResultsDto quizResults = quizResultsService.getQuizResultsById(authHeader, pseudoId, sortType, lang, pageNo, pageSize);
         return ResponseEntity.ok(quizResults);
     }
 

@@ -5,7 +5,8 @@ import lombok.Builder;
 @Builder
 public record QuizResultsDto(
         QuizResultDto quizResults,
-        int numPages
+        int numPages,
+        boolean userResultExists
 ) {
 
 }

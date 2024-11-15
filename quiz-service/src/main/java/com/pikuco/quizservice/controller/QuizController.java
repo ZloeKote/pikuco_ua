@@ -51,7 +51,8 @@ public class QuizController {
             @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
             @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
-        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions, creatorNickname, sortType, lang, pageNo, pageSize);
+        QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions,
+                creatorNickname, sortType, lang, pageNo, pageSize);
         return ResponseEntity.ok(quizzes);
     }
 

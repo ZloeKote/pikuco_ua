@@ -10,4 +10,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface UserAPIClient {
     @GetMapping("api/v1/users")
     ResponseEntity<UserDto> showUserByToken(@RequestHeader("Authorization") String authHeader);
+
+    @GetMapping("api/v1/users/id")
+    ResponseEntity<Long> showUserIdByToken(@RequestHeader("Authorization") String authHeader);
 }

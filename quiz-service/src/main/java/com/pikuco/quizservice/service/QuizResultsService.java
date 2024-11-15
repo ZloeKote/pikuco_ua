@@ -1,6 +1,7 @@
 package com.pikuco.quizservice.service;
 
 import com.mongodb.DBRef;
+import com.mongodb.client.MongoClient;
 import com.pikuco.quizservice.api.UserAPIClient;
 import com.pikuco.quizservice.dto.QuestionResultDto;
 import com.pikuco.quizservice.dto.QuizResultDto;
@@ -36,6 +37,7 @@ public class QuizResultsService {
     private final UserAPIClient userAPIClient;
     @Getter
     private final QuizService quizService;
+    private final MongoClient mongo;
 
     public QuizResultsDto getIndividualQuizResults(String authHeader,
                                                    int pseudoId,
@@ -81,7 +83,7 @@ public class QuizResultsService {
             throw new NoSuchElementException("Такий користувач не має результатів проходження вікторини");
 
         List<QuestionResultDto> questionResultList = new LinkedList<>();
-        int index = 0;
+//        int index = 0;
 //        if (quiz.getTranslations() != null) {
 //            for (QuestionResult qr : results.getQuestions()) {
 //                List<QuestionTranslationDto> questionTranslationDtoList = new ArrayList<>();
@@ -161,10 +163,15 @@ public class QuizResultsService {
         int numPages = questionResultList.size() / pageSize;
 
         return new QuizResultsDto(new QuizResultDto(finalQuestionResultList,
-                0L, LocalDateTime.now()), numPages);
+                0L, LocalDateTime.now()), numPages, true);
     }
 
-    public QuizResultsDto getQuizResultsById(int pseudoId, SortQuizResultsType sortType, String lang, int pageNo, int pageSize) {
+    public QuizResultsDto getQuizResultsById(String authHeader,
+                                             int pseudoId,
+                                             SortQuizResultsType sortType,
+                                             String lang,
+                                             int pageNo,
+                                             int pageSize) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         int amountQuestions = quiz.getQuestions().size();
         int rounds = ((int) Math.round(Math.pow(amountQuestions, 0.5))) + 1; // + 1 because last round has 2nd and 1st place
@@ -215,8 +222,9 @@ public class QuizResultsService {
                 finalQuestionResultList.add(questionResultDtoList.get(i));
             }
             int numPages = questionResultDtoList.size() / pageSize;
+
             return new QuizResultsDto(new QuizResultDto(
-                    finalQuestionResultList, 0L, LocalDateTime.now()), numPages);
+                    finalQuestionResultList, 0L, LocalDateTime.now()), numPages, false);
         }
 
         // find results by quiz id
@@ -382,8 +390,11 @@ public class QuizResultsService {
         }
         int numPages = questionResultList.size() / pageSize;
 
-        return new QuizResultsDto(new QuizResultDto(finalQuestionResultList,
-                0L, LocalDateTime.now()), numPages);
+        return new QuizResultsDto(
+                new QuizResultDto(finalQuestionResultList,
+                        0L, LocalDateTime.now()),
+                numPages,
+                checkIfUserHasIndividualResults(authHeader, quiz.getId()));
     }
 
     public void addNewQuizResult(String authHeader, QuizResult quizResult, int quizPseudoId) {
@@ -485,5 +496,20 @@ public class QuizResultsService {
             quizzesIds.add((ObjectId) quizResult.get("quiz", DBRef.class).getId());
         }
         return quizzesIds;
+    }
+
+    private boolean checkIfUserHasIndividualResults(String authHeader, ObjectId quizId) {
+        if (authHeader == null || authHeader.isBlank())
+            return false;
+        try {
+            ResponseEntity<Long> responseEntity = userAPIClient.showUserIdByToken(authHeader);
+            if (responseEntity.getStatusCode() == HttpStatusCode.valueOf(403))
+                return false;
+            Long userId = responseEntity.getBody();
+            return mongoTemplate.exists(new Query(Criteria.where("quiz.$id").is(quizId)
+                    .and("results.participant_id").is(userId)), QuizResults.class);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
