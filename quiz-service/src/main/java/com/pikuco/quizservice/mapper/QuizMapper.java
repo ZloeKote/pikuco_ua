@@ -23,7 +23,8 @@ public class QuizMapper {
                 quiz.isRoughDraft(),
                 quiz.getCover(),
                 quiz.getLanguage(),
-                quiz.getLanguages());
+                quiz.getLanguages(),
+                quiz.getTags());
     }
 
     public static QuizBasicDto mapToQuizBasicDto(Quiz quiz) {
@@ -39,7 +40,8 @@ public class QuizMapper {
                 quiz.isRoughDraft(),
                 quiz.getLanguage(),
                 quiz.getLanguages(),
-                quiz.getQuestions().size());
+                quiz.getQuestions().size(),
+                quiz.getTags());
     }
 
     public static QuizCardDto mapToQuizCardDto(Quiz quiz) {
@@ -51,7 +53,8 @@ public class QuizMapper {
                 quiz.getLanguage(),
                 quiz.getLanguages(),
                 quiz.isRoughDraft(),
-                quiz.getCover());
+                quiz.getCover(),
+                quiz.getTags());
     }
 
     public static Quiz mapToQuiz(QuizDto quizDto) {
@@ -67,6 +70,7 @@ public class QuizMapper {
                 .pseudoId(quizDto.pseudoId())
                 .isRoughDraft(quizDto.isRoughDraft())
                 .language(quizDto.language())
+                .tags(quizDto.tags())
                 .build();
         if (quizDto.creator() != null) quiz.setCreator(CreatorMapper.mapToCreator(quizDto.creator()));
 

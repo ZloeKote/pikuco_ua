@@ -1,8 +1,6 @@
 package com.pikuco.evaluationservice.controller;
 
 import com.pikuco.evaluationservice.dto.EvaluationDto;
-import com.pikuco.evaluationservice.dto.QuizzesRequest;
-import com.pikuco.evaluationservice.dto.QuizzesResponse;
 import com.pikuco.evaluationservice.service.EvaluationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;

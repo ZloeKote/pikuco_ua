@@ -2,13 +2,8 @@ package com.pikuco.quizservice.mapper;
 
 import com.pikuco.quizservice.dto.QuestionResultDto;
 import com.pikuco.quizservice.dto.QuizResultDto;
-import com.pikuco.quizservice.dto.QuizResultsDto;
 import com.pikuco.quizservice.entity.QuestionResult;
 import com.pikuco.quizservice.entity.QuizResult;
-import com.pikuco.quizservice.entity.QuizResults;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class QuizResultsMapper {
     public static QuizResult mapToQuizResult(QuizResultDto quizResultDto) {

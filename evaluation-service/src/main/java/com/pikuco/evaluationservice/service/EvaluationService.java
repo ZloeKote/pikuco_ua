@@ -4,7 +4,6 @@ import com.pikuco.evaluationservice.api.QuizAPIClient;
 import com.pikuco.evaluationservice.api.UserAPIClient;
 import com.pikuco.evaluationservice.dto.EvaluationBestDto;
 import com.pikuco.evaluationservice.dto.EvaluationDto;
-import com.pikuco.evaluationservice.dto.QuizzesResponse;
 import com.pikuco.evaluationservice.entity.Evaluation;
 import com.pikuco.evaluationservice.exception.NonAuthorizedException;
 import com.pikuco.evaluationservice.repository.EvaluationRepository;

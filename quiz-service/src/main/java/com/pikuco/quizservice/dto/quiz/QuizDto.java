@@ -19,5 +19,6 @@ public record QuizDto(
         boolean isRoughDraft,
         String cover,
         String language,
-        String[] languages
+        String[] languages,
+        List<String> tags
 ) {}

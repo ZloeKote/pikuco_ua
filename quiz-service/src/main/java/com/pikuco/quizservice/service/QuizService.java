@@ -58,6 +58,7 @@ public class QuizService {
                                             String creatorNickname,
                                             SortType sort,
                                             String lang,
+                                            String tags,
                                             int pageNo,
                                             int pageSize) {
         List<Criteria> criteriaList = new LinkedList<>();
@@ -67,6 +68,7 @@ public class QuizService {
             criteriaList.add(new Criteria().orOperator(Criteria.where("title").regex(title, "i"),
                     Criteria.where("translations.title").regex(title, "i")));
         }
+
         if (type != null && !type.isBlank()) {
             criteriaList.add(Criteria.where("type").is(Type.valueOf(type)));
         }
@@ -78,6 +80,18 @@ public class QuizService {
         }
         if (creatorNickname != null) {
             criteriaList.add(Criteria.where("creator.nickname").regex("^" + creatorNickname + "$", "i"));
+        }
+
+        if (tags != null && !tags.isBlank()) {
+            String[] tagArray = tags.split("\\s+");
+            List<Pattern> tagPatterns = Arrays.stream(tagArray)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(tag -> Pattern.compile("^" + Pattern.quote(tag) + "$", Pattern.CASE_INSENSITIVE))
+                    .toList();
+            if (!tagPatterns.isEmpty()) {
+                criteriaList.add(Criteria.where("tags").all(tagPatterns));
+            }
         }
 
         SkipOperation skipOperation = Aggregation.skip((long) (pageNo - 1) * pageSize);
@@ -230,6 +244,8 @@ public class QuizService {
         }
         quiz.setCreator(new Creator(user.id(), user.nickname(), user.avatar()));
         validateQuiz(quiz); // validate quiz
+        quiz.setTags(quiz.getTags().stream().map(String::trim).collect(Collectors.toList()));
+
         int pseudoId = quizRepository.save(quiz).getPseudoId();
         if (pseudoId == 0) throw new NullPointerException("Quiz was not added");
         return pseudoId;
@@ -340,7 +356,7 @@ public class QuizService {
             throw new NonAuthorizedException("Ви не є творцем вікторини, тому не маєте права видаляти її");
         }
 
-        throw new ObjectNotFoundException("Перекладу на мову" + language + " не знайдено!");
+        throw new ObjectNotFoundException("Перекладу на мову " + language + " не знайдено!");
     }
 
     public Quiz getQuizByPseudoId(int quizId) {
@@ -415,7 +431,25 @@ public class QuizService {
         // validate questions
         if (!quiz.isRoughDraft() && quiz.getNumQuestions() != quiz.getQuestions().size())
             throw new ObjectNotValidException(new HashSet<>(List.of("Кількість заповнених питань не відповідає заявленій")));
-        validateQuestions(quiz.getQuestions(), quiz.isRoughDraft(), quiz.getType(), quiz.getQuestions().size());
+        {
+            validateQuestions(quiz.getQuestions(), quiz.isRoughDraft(), quiz.getType(), quiz.getQuestions().size());
+        }
+
+        // validate tags: allow only letters, digits, length 1..30
+        if (quiz.getTags() != null) {
+            Pattern tagPattern = Pattern.compile("^[A-Za-z0-9]{1,30}$");
+            for (String tag : quiz.getTags()) {
+                if (tag == null || tag.isBlank()) {
+                    throw new ObjectNotValidException(new HashSet<>(List.of("Тег не може бути порожнім")));
+                }
+                String trimmedTag = tag.trim();
+                if (!tagPattern.matcher(trimmedTag).matches()) {
+                    throw new ObjectNotValidException(new HashSet<>(
+                            List.of("Тег \"" + tag + "\" містить недопустимі символи або включає більше ніж 30 символів. " +
+                                    "Дозволені символи: літери, цифри")));
+                }
+            }
+        }
     }
 
     private void validateQuizTranslation(Quiz quiz, QuizTranslation quizTranslation, String language) {
@@ -533,7 +567,8 @@ public class QuizService {
                 quizTranslation.getLanguage(),
                 original.languages(),
                 original.isRoughDraft(),
-                original.cover());
+                original.cover(),
+                original.tags());
     }
 
     public static String[] getLanguages(Quiz quiz) {

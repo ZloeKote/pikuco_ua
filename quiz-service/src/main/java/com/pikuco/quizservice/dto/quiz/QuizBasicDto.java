@@ -3,6 +3,7 @@ package com.pikuco.quizservice.dto.quiz;
 import com.pikuco.quizservice.entity.Creator;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record QuizBasicDto(
         String title,
@@ -17,6 +18,7 @@ public record QuizBasicDto(
         boolean isRoughDraft,
         String language,
         String[] languages,
-        int amountQuestions
+        int amountQuestions,
+        List<String> tags
 ) {
 }

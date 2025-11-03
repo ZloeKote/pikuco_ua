@@ -2,6 +2,8 @@ package com.pikuco.quizservice.dto.quiz;
 
 import com.pikuco.quizservice.dto.CreatorDto;
 
+import java.util.List;
+
 public record QuizCardDto(
         String title,
         String description,
@@ -11,6 +13,7 @@ public record QuizCardDto(
         String language,
         String[] languages,
         boolean isRoughDraft,
-        String cover
+        String cover,
+        List<String> tags
 ) {
 }

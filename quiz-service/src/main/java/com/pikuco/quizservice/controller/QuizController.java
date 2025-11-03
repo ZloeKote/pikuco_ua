@@ -10,7 +10,6 @@ import com.pikuco.quizservice.entity.SortType;
 import com.pikuco.quizservice.mapper.QuizMapper;
 import com.pikuco.quizservice.service.QuizService;
 import com.pikuco.quizservice.utils.Const;
-import feign.Body;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,11 +47,12 @@ public class QuizController {
             @RequestParam(name = "creatorNickname", required = false) String creatorNickname,
             @RequestParam(defaultValue = "NEWEST", name = "sort", required = false) String sort,
             @RequestParam(defaultValue = "uk", name = "lang", required = false) String lang,
+            @RequestParam(name = "tags", required = false) String tags,
             @RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
             @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
         SortType sortType = SortType.checkType(sort) != null ? SortType.checkType(sort) : SortType.NEWEST;
         QuizListDto quizzes = quizService.getFilterSortQuizzes(title, type, showRoughDraft, numberQuestions,
-                creatorNickname, sortType, lang, pageNo, pageSize);
+                creatorNickname, sortType, lang, tags, pageNo, pageSize);
         return ResponseEntity.ok(quizzes);
     }
 
