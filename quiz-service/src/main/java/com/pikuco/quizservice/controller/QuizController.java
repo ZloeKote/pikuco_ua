@@ -32,8 +32,9 @@ public class QuizController {
     @Operation(summary = "Get all battle royales", description = "Get all tournaments")
     @ApiResponse(responseCode = "200", description = "Found tournaments")
     @GetMapping()
-    public ResponseEntity<List<QuizDto>> showQuizzes(@RequestParam(defaultValue = "1", name = "page", required = false) int pageNo) {
-        List<QuizDto> quizzes = quizService.getQuizzes(pageNo, Const.PAGE_SIZE)
+    public ResponseEntity<List<QuizDto>> showQuizzes(@RequestParam(defaultValue = "1", name = "page", required = false) int pageNo,
+                                                     @RequestParam(defaultValue = "8", name = "pageSize", required = false) int pageSize) {
+        List<QuizDto> quizzes = quizService.getQuizzes(pageNo, pageSize)
                 .stream().map(QuizMapper::mapToQuizDto).toList();
         return ResponseEntity.ok(quizzes);
     }
@@ -183,6 +184,18 @@ public class QuizController {
     public ResponseEntity<String> showQuizIdByPseudoId(@PathVariable int pseudoId) {
         Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
         return ResponseEntity.ok(String.valueOf(quiz.getId()));
+    }
+
+    @GetMapping("/by-id/{quizId}")
+    public ResponseEntity<QuizBasicDto> showQuizBasicById(@PathVariable String quizId) {
+        QuizBasicDto quizDto = QuizMapper.mapToQuizBasicDto(quizService.getQuizById(quizId));
+        return ResponseEntity.ok(quizDto);
+    }
+
+    @GetMapping("/completed/users/{userId}")
+    public ResponseEntity<List<Integer>> getCompletedQuizzesPseudoIds(@PathVariable long userId) {
+        List<Integer> completedPseudoIds = quizService.getCompletedQuizzesPseudoIds(userId);
+        return ResponseEntity.ok(completedPseudoIds);
     }
 
     @PutMapping("/users/{userId}")

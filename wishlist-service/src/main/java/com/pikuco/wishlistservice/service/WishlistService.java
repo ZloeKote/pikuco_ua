@@ -99,6 +99,14 @@ public class WishlistService {
         return resultsCountMap.get("quantity");
     }
 
+    public List<Wishlist> getUserWishlist(Long userId) {
+        Query query = new Query(Criteria.where("user_id").is(userId)
+                .and("type").is("quiz"));
+        query.with(Sort.by(Sort.Direction.DESC, "wishlistedAt"));
+        
+        return mongoTemplate.find(query, Wishlist.class, "wishlist");
+    }
+
     private Wishlist getReadyWishlist(String authHeader, int pseudoId) {
         String quizId = quizAPI.showQuizIdByPseudoId(pseudoId).getBody();
 

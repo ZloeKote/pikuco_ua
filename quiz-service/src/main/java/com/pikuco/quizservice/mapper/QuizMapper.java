@@ -40,7 +40,7 @@ public class QuizMapper {
                 quiz.isRoughDraft(),
                 quiz.getLanguage(),
                 quiz.getLanguages(),
-                quiz.getQuestions().size(),
+                quiz.getNumQuestions(), // TODO: change to quiz.getQuestions.size()
                 quiz.getTags());
     }
 

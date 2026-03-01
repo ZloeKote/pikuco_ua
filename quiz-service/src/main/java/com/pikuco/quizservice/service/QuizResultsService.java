@@ -498,6 +498,19 @@ public class QuizResultsService {
         return quizzesIds;
     }
 
+    public int getQuizCompletionCount(int pseudoId) {
+        try {
+            Quiz quiz = quizService.getQuizByPseudoId(pseudoId);
+            QuizResults quizResults = quizResultsRepository.findByQuiz_Id(quiz.getId()).orElse(null);
+            if (quizResults == null || quizResults.getResults() == null) {
+                return 0;
+            }
+            return quizResults.getResults().size();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     private boolean checkIfUserHasIndividualResults(String authHeader, ObjectId quizId) {
         if (authHeader == null || authHeader.isBlank())
             return false;

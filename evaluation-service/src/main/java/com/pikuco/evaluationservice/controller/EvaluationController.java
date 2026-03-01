@@ -1,6 +1,7 @@
 package com.pikuco.evaluationservice.controller;
 
 import com.pikuco.evaluationservice.dto.EvaluationDto;
+import com.pikuco.evaluationservice.dto.UserEvaluationDto;
 import com.pikuco.evaluationservice.service.EvaluationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -56,5 +57,19 @@ public class EvaluationController {
             @RequestParam(required = false, defaultValue = "8") int pageSize) {
         Map<String, Object> quizzesResponse = evaluationService.getBestQuizzesIds(quizzesIds, pageNo, pageSize);
         return ResponseEntity.ok(quizzesResponse);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<UserEvaluationDto>> getUserEvaluations(@PathVariable Long userId) {
+        List<UserEvaluationDto> evaluations = evaluationService.getUserEvaluations(userId);
+        return ResponseEntity.ok(evaluations);
+    }
+
+    @GetMapping("/quiz/{pseudoId}/count")
+    public ResponseEntity<Long> getQuizEvaluationCount(
+            @PathVariable int pseudoId,
+            @RequestParam boolean isLiked) {
+        Long count = evaluationService.getQuizEvaluationCount(pseudoId, isLiked);
+        return ResponseEntity.ok(count);
     }
 }

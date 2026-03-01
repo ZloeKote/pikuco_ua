@@ -70,4 +70,11 @@ public class WishlistController {
         wishlistService.deleteAllWishlistsByUserId(userId);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<List<WishlistDto>> getUserWishlist(@PathVariable Long userId) {
+        List<WishlistDto> wishlists = wishlistService.getUserWishlist(userId)
+                .stream().map(WishlistMapper::mapToWishlistDto).toList();
+        return ResponseEntity.ok(wishlists);
+    }
 }

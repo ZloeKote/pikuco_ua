@@ -57,4 +57,10 @@ public class QuizResultsController {
         quizResultsService.addNewQuizResult(authHeader, QuizResultsMapper.mapToQuizResult(quizResultDto), pseudoId);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/quiz/{pseudoId}")
+    public ResponseEntity<Integer> getQuizCompletionCount(@PathVariable int pseudoId) {
+        int count = quizResultsService.getQuizCompletionCount(pseudoId);
+        return ResponseEntity.ok(count);
+    }
 }

@@ -170,6 +170,11 @@ public class QuizService {
             Long participantId = Objects.requireNonNull(responseEntity.getBody()).id();
             QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
             List<ObjectId> quizIds = quizResultsService.getQuizzesIdByParticipantId(participantId, sort, PageNo, pageSize);
+
+            if (quizIds.isEmpty()) {
+                return new QuizListDto(new ArrayList<>(), 0);
+            }
+
             List<Quiz> unsortedQuizzes = quizRepository.findAllByIdIn(quizIds);
             Map<ObjectId, Quiz> quizMap = unsortedQuizzes.stream().collect(Collectors.toMap(Quiz::getId, Function.identity()));
 
@@ -277,6 +282,7 @@ public class QuizService {
         quizToChange.setLanguage(quiz.getLanguage());
         quizToChange.setNumQuestions(quiz.getNumQuestions());
         quizToChange.setQuestions(quiz.getQuestions());
+        quizToChange.setTags(quiz.getTags());
 
         Query query = new Query().addCriteria(Criteria.where("_id").is(quizToChange.getId()));
         mongoTemplate.findAndReplace(query, quizToChange, "quiz");
@@ -366,6 +372,40 @@ public class QuizService {
         return quiz;
     }
 
+    public Quiz getQuizById(String quizId) {
+        ObjectId objectId;
+        try {
+            objectId = new ObjectId(quizId);
+        } catch (IllegalArgumentException e) {
+            throw new ObjectNotFoundException("Турнір не знайдено");
+        }
+        Quiz quiz = quizRepository.findById(objectId)
+                .orElseThrow(() -> new ObjectNotFoundException("Турнір не знайдено"));
+        quiz.setLanguages(getLanguages(quiz));
+        return quiz;
+    }
+
+    public List<Integer> getCompletedQuizzesPseudoIds(Long userId) {
+        QuizResultsService quizResultsService = context.getBean(QuizResultsService.class);
+        // Get all completed quiz IDs (no pagination - get all)
+        List<ObjectId> quizIds = quizResultsService.getQuizzesIdByParticipantId(
+                userId, 
+                SortQuizResultsType.NEWEST, 
+                1, 
+                Integer.MAX_VALUE
+        );
+        
+        if (quizIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Fetch quizzes and extract pseudoIds
+        List<Quiz> quizzes = quizRepository.findAllByIdIn(quizIds);
+        return quizzes.stream()
+                .map(Quiz::getPseudoId)
+                .toList();
+    }
+
     public Quiz getQuizByPseudoId(int quizId, String lang, String authHeader) {
         Quiz quiz = quizRepository.findQuizByPseudoId(quizId)
                 .orElseThrow(() -> new ObjectNotFoundException("Турнір не знайдено"));
@@ -382,7 +422,7 @@ public class QuizService {
         }
 
         quiz.setLanguages(getLanguages(quiz));
-        if (lang == null || lang.isBlank()) return quiz;
+        if ("original".equals(lang) || lang == null || lang.isBlank()) return quiz;
 
         if (quiz.getTranslations() != null &&
                 quiz.getTranslations().stream().anyMatch((tr) -> tr.getLanguage().equals(lang))) {
@@ -408,7 +448,7 @@ public class QuizService {
 
     private void validateQuiz(Quiz quiz) {
         // validate creator's credentials
-        if (quiz.getCreator().getCreatorId() == 0 || (quiz.getCreator().getNickname() == null || quiz.getCreator().getNickname().isBlank()))
+        if (quiz.getCreator().getNickname() == null || quiz.getCreator().getNickname().isBlank())
             throw new ObjectNotValidException(new HashSet<>(List.of("Ви не авторизовані")));
 
         // validate title
@@ -437,7 +477,7 @@ public class QuizService {
 
         // validate tags: allow only letters, digits, length 1..30
         if (quiz.getTags() != null) {
-            Pattern tagPattern = Pattern.compile("^[A-Za-z0-9]{1,30}$");
+            Pattern tagPattern = Pattern.compile("^[a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\\s]{1,30}$");
             for (String tag : quiz.getTags()) {
                 if (tag == null || tag.isBlank()) {
                     throw new ObjectNotValidException(new HashSet<>(List.of("Тег не може бути порожнім")));

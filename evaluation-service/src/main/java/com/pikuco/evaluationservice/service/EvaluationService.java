@@ -4,6 +4,7 @@ import com.pikuco.evaluationservice.api.QuizAPIClient;
 import com.pikuco.evaluationservice.api.UserAPIClient;
 import com.pikuco.evaluationservice.dto.EvaluationBestDto;
 import com.pikuco.evaluationservice.dto.EvaluationDto;
+import com.pikuco.evaluationservice.dto.UserEvaluationDto;
 import com.pikuco.evaluationservice.entity.Evaluation;
 import com.pikuco.evaluationservice.exception.NonAuthorizedException;
 import com.pikuco.evaluationservice.repository.EvaluationRepository;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -200,6 +202,48 @@ public class EvaluationService {
         }
         resultMap.put("quizzesIds", bestQuizzesIds);
         return resultMap;
+    }
+
+    public List<UserEvaluationDto> getUserEvaluations(Long userId) {
+        Query query = new Query(Criteria.where("user_id").is(userId)
+                .and("type").is("quiz"));
+        query.with(Sort.by(Sort.Direction.DESC, "evaluatedAt"));
+
+        List<Evaluation> evaluations = mongoTemplate.find(query, Evaluation.class, "evaluation");
+
+        return evaluations.stream()
+                .map(this::mapToUserEvaluationDto)
+                .collect(Collectors.toList());
+    }
+
+    public Long getQuizEvaluationCount(int pseudoId, boolean isLiked) {
+        String quizId;
+        try {
+            quizId = quizAPI.showQuizIdByPseudoId(pseudoId).getBody();
+        } catch (FeignException e) {
+            return 0L;
+        }
+
+        if (quizId == null) {
+            return 0L;
+        }
+
+        Query query = new Query(Criteria.where("evaluation_object_id").is(quizId)
+                .and("type").is("quiz")
+                .and("isLiked").is(isLiked));
+
+        return mongoTemplate.count(query, "evaluation");
+    }
+
+    private UserEvaluationDto mapToUserEvaluationDto(Evaluation evaluation) {
+        return UserEvaluationDto.builder()
+                .id(evaluation.getId() != null ? evaluation.getId().toString() : null)
+                .type(evaluation.getType())
+                .userId(evaluation.getUserId())
+                .evaluationObjectId(evaluation.getEvaluationObjectId())
+                .isLiked(evaluation.isLiked())
+                .evaluatedAt(evaluation.getEvaluatedAt())
+                .build();
     }
 
     private Pair<Long, String> getUserAndQuizId(String authHeader, int pseudoId) {
